@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { REFRESH_INTERVAL_MS } from "@/config";
 
-export function useAutoRefresh(intervalMs: number = REFRESH_INTERVAL_MS) {
+export function useAutoRefresh(intervalMs: number) {
   const [tick, setTick] = useState(0);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const lastRefreshAtRef = useRef(Date.now());

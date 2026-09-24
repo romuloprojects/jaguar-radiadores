@@ -18,7 +18,14 @@ import { useAuth } from "@/auth/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 const nav = [
@@ -38,7 +45,13 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
       {nav.map(({ to, label, icon: Icon }) => {
         const active = to === "/" ? pathname === "/" : pathname.startsWith(to);
         return (
-          <Link key={to} to={to} onClick={onNavigate} className={`jaguar-nav__link ${active ? "is-active" : ""}`}>
+          <Link
+            key={to}
+            to={to}
+            aria-current={active ? "page" : undefined}
+            onClick={onNavigate}
+            className={`jaguar-nav__link ${active ? "is-active" : ""}`}
+          >
             <Icon className="h-4 w-4" />
             <span>{label}</span>
           </Link>
@@ -58,41 +71,75 @@ export function JaguarHeader() {
           <img src="/images/jaguar-logo-source.jpg" alt="Jaguar Radiadores" />
         </Link>
 
-        <nav className="jaguar-nav hidden xl:flex" aria-label="Navegação principal"><NavLinks /></nav>
+        <nav className="jaguar-nav hidden xl:flex" aria-label="Navegação principal">
+          <NavLinks />
+        </nav>
 
         <div className="jaguar-header__actions">
           <div className="jaguar-global-search hidden lg:flex">
             <Search className="h-4 w-4" />
-            <Input placeholder="Buscar clientes, veículos, orçamentos..." aria-label="Busca global" />
+            <Input
+              placeholder="Buscar clientes, veículos, orçamentos..."
+              aria-label="Busca global"
+            />
           </div>
           <ThemeToggle />
-          <Button variant="ghost" size="icon" className="relative h-9 w-9 rounded-xl text-white/70 hover:bg-white/10 hover:text-white">
-            <Bell className="h-4 w-4" /><span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[#ff2633]" />
+          <Button
+            aria-label="Notificações"
+            variant="ghost"
+            size="icon"
+            className="relative h-9 w-9 rounded-xl text-white/70 hover:bg-white/10 hover:text-white"
+          >
+            <Bell className="h-4 w-4" />
+            <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[#ff2633]" />
           </Button>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className="jaguar-user">
-                <span className="jaguar-user__avatar">{(session?.user.displayName || "U").slice(0, 1).toUpperCase()}</span>
-                <span className="hidden text-left md:block"><b>{session?.user.displayName ?? "Usuário"}</b><small>Administrador</small></span>
+                <span className="jaguar-user__avatar">
+                  {(session?.user.displayName || "U").slice(0, 1).toUpperCase()}
+                </span>
+                <span className="hidden text-left md:block">
+                  <b>{session?.user.displayName ?? "Usuário"}</b>
+                  <small>Administrador</small>
+                </span>
                 <ChevronDown className="hidden h-4 w-4 md:block" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52">
               <DropdownMenuLabel>Conta</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem asChild><Link to="/configuracoes"><Settings className="mr-2 h-4 w-4" />Configurações</Link></DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/configuracoes">
+                  <Settings className="mr-2 h-4 w-4" />
+                  Configurações
+                </Link>
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => void logout()}>Sair</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-white hover:bg-white/10 xl:hidden"><Menu className="h-5 w-5" /></Button>
+              <Button
+                aria-label="Abrir navegação"
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 rounded-xl text-white hover:bg-white/10 xl:hidden"
+              >
+                <Menu className="h-5 w-5" />
+              </Button>
             </SheetTrigger>
             <SheetContent side="right" className="w-[310px] p-0">
-              <SheetHeader className="border-b p-5"><SheetTitle>Jaguar Radiadores</SheetTitle></SheetHeader>
-              <div className="p-3"><div className="jaguar-nav flex flex-col"><NavLinks onNavigate={() => setMobileOpen(false)} /></div></div>
+              <SheetHeader className="border-b p-5">
+                <SheetTitle>Jaguar Radiadores</SheetTitle>
+              </SheetHeader>
+              <div className="p-3">
+                <div className="jaguar-nav flex flex-col">
+                  <NavLinks onNavigate={() => setMobileOpen(false)} />
+                </div>
+              </div>
             </SheetContent>
           </Sheet>
         </div>
