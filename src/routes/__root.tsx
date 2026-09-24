@@ -9,7 +9,7 @@ import {
 } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 
-import appCss from "../styles.css?url";
+import appCss from "../jaguar-v021.css?url";
 import { reportApplicationError } from "../lib/error-reporting";
 import { AuthProvider } from "../auth/AuthContext";
 import { AuthGate } from "../auth/AuthGate";
@@ -57,13 +57,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Jaguar Radiadores | Gestão Integrada" },
-      { name: "jaguar-ui-version", content: "0.1.0-mock" },
+      { name: "jaguar-ui-version", content: "0.2.1-visual-fix" },
       { name: "description", content: "Protótipo de gestão comercial, estoque e financeiro da Jaguar Radiadores." },
       { property: "og:title", content: "Jaguar Radiadores | Gestão Integrada" },
       { property: "og:type", content: "website" },
     ],
     links: [
-      { rel: "stylesheet", href: `${appCss}?jaguar-ui=0.1.0` },
+      { rel: "stylesheet", href: `${appCss}${appCss.includes("?") ? "&" : "?"}jaguar-ui=0.2.1` },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" },

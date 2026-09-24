@@ -59,3 +59,16 @@ O ambiente de geração não conseguiu concluir `npm install` dentro do limite d
 - transpile sintático de todos os arquivos TS/TSX;
 - validação de imports locais;
 - verificação de ausência de referências ANCAR em `src`.
+
+
+## V0.2.1 — correção de CSS/cache e host Vite
+
+Esta revisão corrige a divergência visual observada no deploy, em que o HTML V0.2 estava sendo exibido com o stylesheet anterior da V0.1.
+
+- stylesheet principal renomeado para `src/jaguar-v021.css`;
+- cache-buster atualizado para `jaguar-ui=0.2.1`;
+- metadado de versão atualizado para `0.2.1-visual-fix`;
+- Vite liberado explicitamente para `jaguar-radiadores.facilities-ai.com.br`;
+- `server` e `preview` configurados na porta 8003.
+
+Após publicar, faça um redeploy limpo e, na primeira abertura, use atualização forçada do navegador para descartar o CSS anterior.
