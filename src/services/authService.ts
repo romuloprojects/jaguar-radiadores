@@ -1,39 +1,31 @@
 import type { AuthSession } from "@/auth/auth-storage";
+import { jaguarApi } from "@/services/jaguarApi";
 
-const MOCK_USER = {
-  id: 1,
-  username: "admin",
-  displayName: "Lucas",
-  role: "ADMIN",
-} as const;
-
-function delay(ms = 280) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+function toSession(payload: Awaited<ReturnType<typeof jaguarApi.auth.session>>): AuthSession {
+  return {
+    expiresAt: payload.expiresAt ?? null,
+    mustChangePassword: Boolean(payload.mustChangePassword),
+    user: {
+      id: payload.user.id,
+      username: payload.user.username,
+      displayName: payload.user.displayName,
+      role: String(payload.user.role || "OPERATOR").toUpperCase(),
+      email: payload.user.email ?? null,
+    },
+  };
 }
 
 export const authService = {
-  async login(username: string, password: string): Promise<AuthSession> {
-    await delay();
-    if (!username.trim() || !password) throw new Error("Informe usuário e senha.");
-    return {
-      token: `mock-${Date.now()}`,
-      expiresAt: null,
-      mustChangePassword: false,
-      user: { ...MOCK_USER, username: username.trim(), displayName: username.trim().toLowerCase() === "admin" ? "Lucas" : username.trim() },
-    };
+  async login(username: string, password: string, persistent = false): Promise<AuthSession> {
+    return toSession(await jaguarApi.auth.login(username, password, persistent));
   },
-
-  async me(_token: string): Promise<Omit<AuthSession, "token">> {
-    await delay(80);
-    return { expiresAt: null, mustChangePassword: false, user: MOCK_USER };
+  async me(): Promise<AuthSession> {
+    return toSession(await jaguarApi.auth.session());
   },
-
-  async logout(_token: string) {
-    await delay(80);
+  async logout() {
+    await jaguarApi.auth.logout();
   },
-
-  async changePassword(_token: string, _currentPassword: string, _newPassword: string) {
-    await delay(120);
-    return { ok: true };
+  async changePassword(currentPassword: string, newPassword: string) {
+    await jaguarApi.auth.changePassword(currentPassword, newPassword);
   },
 };

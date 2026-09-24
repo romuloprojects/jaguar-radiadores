@@ -55,7 +55,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
       <div className="max-w-md text-center">
         <h1 className="text-xl font-semibold">Não foi possível carregar esta página</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Tente novamente. Este protótipo trabalha somente com dados mockados locais.
+          Tente novamente. Se o problema persistir, verifique a conexão com o backend Jaguar.
         </p>
         <div className="mt-6 flex justify-center gap-2">
           <button
@@ -83,10 +83,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Jaguar Radiadores | Gestão Integrada" },
-      { name: "jaguar-ui-version", content: "0.2.1-homologado" },
+      { name: "jaguar-ui-version", content: "1.0.0-api-real" },
       {
         name: "description",
-        content: "Protótipo de gestão comercial, estoque e financeiro da Jaguar Radiadores.",
+        content: "Gestão comercial, estoque e financeiro da Jaguar Radiadores.",
       },
       { property: "og:title", content: "Jaguar Radiadores | Gestão Integrada" },
       { property: "og:type", content: "website" },

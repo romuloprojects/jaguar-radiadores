@@ -1,373 +1,90 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import {
-  Banknote,
-  CalendarDays,
-  Download,
-  Plus,
-  TrendingDown,
-  TrendingUp,
-  WalletCards,
-} from "lucide-react";
-import {
-  Bar,
-  CartesianGrid,
-  ComposedChart,
-  Line,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
-import { InternalPage, StatCard, StatusPill, chartTooltipStyle } from "@/components/InternalPage";
+import { Banknote, CalendarDays, Check, Download, Plus, Search, TrendingDown, TrendingUp } from "lucide-react";
+import { useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { toast } from "sonner";
+import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { FilterBar, InternalPage, StatCard, StatusPill, chartTooltipStyle } from "@/components/InternalPage";
 import { PageHeader } from "@/components/ui-helpers";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { cashFlow, cashFlowProjection, payables, receivables } from "@/data/mock/jaguar";
+import { jaguarApi } from "@/services/jaguarApi";
+import type { PayableApi, ReceivableApi } from "@/types/api";
+import { asNumber, datePt, paymentMethodLabel, paymentStatusLabel, statusToneForPayment } from "@/utils/api-format";
 import { brl } from "@/utils/format";
 
 export const Route = createFileRoute("/financeiro")({ component: FinancePage });
 
-function FinancePage() {
-  const totalReceivable = receivables
-    .filter((r) => r.status !== "Pago")
-    .reduce((s, r) => s + (r.amount - r.paid), 0);
-  const totalPayable = payables
-    .filter((p) => p.status !== "Pago")
-    .reduce((s, p) => s + p.amount, 0);
-  const dueItems = [
-    ...receivables
-      .filter((r) => r.status !== "Pago")
-      .map((r) => ({
-        id: r.id,
-        date: r.dueDate,
-        title: r.customer,
-        reference: r.reference,
-        type: "A receber",
-        amount: r.amount - r.paid,
-        status: r.status,
-      })),
-    ...payables
-      .filter((p) => p.status !== "Pago")
-      .map((p) => ({
-        id: p.id,
-        date: p.dueDate,
-        title: p.supplier,
-        reference: p.category,
-        type: "A pagar",
-        amount: p.amount,
-        status: p.status,
-      })),
-  ].slice(0, 6);
+function iso(d:Date){return d.toISOString().slice(0,10)}
+function range(){const now=new Date();const from=new Date(now.getFullYear(),now.getMonth(),1);const to=new Date(now);to.setDate(to.getDate()+30);return {from:iso(from),to:iso(to)}}
 
-  return (
-    <InternalPage>
-      <PageHeader
-        title="Financeiro"
-        subtitle="Acompanhe fluxo de caixa, contas a receber e contas a pagar em um só lugar."
-        right={
-          <div className="flex gap-2">
-            <Button variant="outline">
-              <Download className="mr-2 h-4 w-4" />
-              Exportar
-            </Button>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Novo lançamento
-            </Button>
-          </div>
-        }
-      />
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          label="Saldo atual"
-          value={brl(18200)}
-          icon={Banknote}
-          accent="green"
-          detail="Caixa e contas configuradas"
-        />
-        <StatCard
-          label="A receber"
-          value={brl(totalReceivable)}
-          icon={TrendingUp}
-          accent="green"
-          detail={`${receivables.filter((r) => r.status !== "Pago").length} títulos em aberto`}
-        />
-        <StatCard
-          label="A pagar"
-          value={brl(totalPayable)}
-          icon={TrendingDown}
-          accent="red"
-          detail={`${payables.filter((p) => p.status !== "Pago").length} compromissos`}
-        />
-        <StatCard
-          label="Saldo projetado"
-          value={brl(21500)}
-          icon={CalendarDays}
-          accent="graphite"
-          detail="Próximos 30 dias"
-        />
-      </div>
-
-      <Tabs defaultValue="cashflow" className="space-y-4">
-        <TabsList className="finance-tabs">
-          <TabsTrigger value="cashflow">Fluxo de Caixa</TabsTrigger>
-          <TabsTrigger value="receber">Contas a Receber</TabsTrigger>
-          <TabsTrigger value="pagar">Contas a Pagar</TabsTrigger>
-        </TabsList>
-        <TabsContent value="cashflow" className="space-y-4">
-          <div className="grid min-w-0 gap-4 xl:grid-cols-[1.6fr_.8fr]">
-            <section className="panel finance-chart-card">
-              <div className="finance-chart-card__header">
-                <div>
-                  <span>FLUXO PROJETADO</span>
-                  <h2>Fluxo de caixa — próximos 30 dias</h2>
-                </div>
-                <div className="chart-legend-inline">
-                  <span>
-                    <i className="income" />
-                    Entradas
-                  </span>
-                  <span>
-                    <i className="expense" />
-                    Saídas
-                  </span>
-                  <span>
-                    <i className="balance" />
-                    Saldo projetado
-                  </span>
-                </div>
-              </div>
-              <div className="h-[340px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart
-                    data={cashFlowProjection}
-                    margin={{ left: -4, right: 14, top: 14, bottom: 0 }}
-                  >
-                    <CartesianGrid
-                      vertical={false}
-                      stroke="var(--chart-grid)"
-                      strokeDasharray="3 3"
-                    />
-                    <XAxis
-                      dataKey="day"
-                      tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
-                      axisLine={false}
-                      tickLine={false}
-                    />
-                    <YAxis
-                      tickFormatter={(v) => `${v / 1000}k`}
-                      tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
-                      axisLine={false}
-                      tickLine={false}
-                    />
-                    <Tooltip contentStyle={chartTooltipStyle} formatter={(v: number) => brl(v)} />
-                    <Bar
-                      dataKey="income"
-                      name="Entradas"
-                      fill="var(--accent-green)"
-                      radius={[4, 4, 0, 0]}
-                    />
-                    <Bar
-                      dataKey="expense"
-                      name="Saídas"
-                      fill="var(--accent-red)"
-                      radius={[4, 4, 0, 0]}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="balance"
-                      name="Saldo projetado"
-                      stroke="var(--accent-graphite)"
-                      strokeWidth={2.6}
-                      dot={{ r: 3, fill: "var(--card)" }}
-                    />
-                  </ComposedChart>
-                </ResponsiveContainer>
-              </div>
-            </section>
-            <section className="panel due-card">
-              <div className="financial-summary">
-                <h2>Resumo financeiro</h2>
-                <p>Recebimentos e pagamentos em aberto.</p>
-                <div className="financial-summary__item" data-tone="green">
-                  <TrendingUp />
-                  <div>
-                    <span>Contas a receber</span>
-                    <b>{brl(totalReceivable)}</b>
-                  </div>
-                </div>
-                <div className="financial-summary__item" data-tone="red">
-                  <TrendingDown />
-                  <div>
-                    <span>Contas a pagar</span>
-                    <b>{brl(totalPayable)}</b>
-                  </div>
-                </div>
-              </div>
-            </section>
-          </div>
-
-          <section className="panel">
-            <div className="table-section-heading">
-              <div>
-                <span>MOVIMENTAÇÕES</span>
-                <h2>Movimentações financeiras</h2>
-              </div>
-              <Button variant="outline" size="sm">
-                Filtros
-              </Button>
-            </div>
-            <div className="data-table-wrap border-0">
-              <table className="data-table min-w-[900px]">
-                <thead>
-                  <tr>
-                    <th>Data</th>
-                    <th>Histórico</th>
-                    <th>Categoria</th>
-                    <th>Entrada</th>
-                    <th>Saída</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {cashFlow.map((e) => (
-                    <tr key={e.id}>
-                      <td>{e.date}</td>
-                      <td className="font-medium">{e.description}</td>
-                      <td>{e.category}</td>
-                      <td className="font-semibold text-[var(--accent-green)]">
-                        {e.kind === "Entrada" ? brl(e.amount) : "—"}
-                      </td>
-                      <td className="font-semibold text-[var(--accent-red)]">
-                        {e.kind === "Saída" ? brl(e.amount) : "—"}
-                      </td>
-                      <td>
-                        <StatusPill label={e.status} tone="warning" />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
-          <section className="panel due-card">
-            <div className="due-card__header">
-              <div>
-                <span>VENCIMENTOS</span>
-                <h2>Próximos compromissos</h2>
-              </div>
-              <CalendarDays className="h-5 w-5 text-primary" />
-            </div>
-            <div className="due-card__tabs">
-              <button className="is-active">Todos</button>
-              <button>A receber</button>
-              <button>A pagar</button>
-            </div>
-            <div className="due-card__list">
-              {dueItems.map((item) => (
-                <div key={item.id} className="due-row">
-                  <div className="due-row__date">
-                    <b>{item.date.slice(0, 2)}</b>
-                    <span>SET</span>
-                  </div>
-                  <div className="min-w-0">
-                    <b>{item.title}</b>
-                    <span>{item.reference}</span>
-                  </div>
-                  <div className="text-right">
-                    <StatusPill
-                      label={item.type}
-                      tone={item.type === "A receber" ? "positive" : "danger"}
-                    />
-                    <strong>{brl(item.amount)}</strong>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        </TabsContent>
-
-        <TabsContent value="receber">
-          <div className="panel data-table-wrap">
-            <table className="data-table min-w-[900px]">
-              <thead>
-                <tr>
-                  <th>Cliente</th>
-                  <th>Referência</th>
-                  <th>Vencimento</th>
-                  <th>Valor</th>
-                  <th>Recebido</th>
-                  <th>Saldo</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {receivables.map((r) => (
-                  <tr key={r.id}>
-                    <td className="font-medium">{r.customer}</td>
-                    <td>{r.reference}</td>
-                    <td>{r.dueDate}</td>
-                    <td>{brl(r.amount)}</td>
-                    <td>{brl(r.paid)}</td>
-                    <td className="font-semibold">{brl(r.amount - r.paid)}</td>
-                    <td>
-                      <StatusPill
-                        label={r.status}
-                        tone={
-                          r.status === "Pago"
-                            ? "positive"
-                            : r.status === "Vencido"
-                              ? "danger"
-                              : r.status === "Parcial"
-                                ? "warning"
-                                : "info"
-                        }
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </TabsContent>
-        <TabsContent value="pagar">
-          <div className="panel data-table-wrap">
-            <table className="data-table min-w-[850px]">
-              <thead>
-                <tr>
-                  <th>Fornecedor / despesa</th>
-                  <th>Categoria</th>
-                  <th>Vencimento</th>
-                  <th>Valor</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {payables.map((p) => (
-                  <tr key={p.id}>
-                    <td className="font-medium">{p.supplier}</td>
-                    <td>{p.category}</td>
-                    <td>{p.dueDate}</td>
-                    <td className="font-semibold">{brl(p.amount)}</td>
-                    <td>
-                      <StatusPill
-                        label={p.status}
-                        tone={
-                          p.status === "Pago"
-                            ? "positive"
-                            : p.status === "Vencido"
-                              ? "danger"
-                              : "warning"
-                        }
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </TabsContent>
-      </Tabs>
-    </InternalPage>
-  );
+function FinancePage(){
+  const qc=useQueryClient(); const period=useMemo(range,[]); const [search,setSearch]=useState(""); const [status,setStatus]=useState("");
+  const receivables=useQuery({queryKey:["receivables",search,status],queryFn:()=>jaguarApi.finance.receivables({search:search||undefined,status:status||undefined,limit:500})});
+  const payables=useQuery({queryKey:["payables",search,status],queryFn:()=>jaguarApi.finance.payables({search:search||undefined,status:status||undefined,limit:500})});
+  const cash=useQuery({queryKey:["cashflow",period.from,period.to],queryFn:()=>jaguarApi.finance.cashFlow(period)});
+  const settings=useQuery({queryKey:["settings"],queryFn:jaguarApi.settings.get});
+  const rItems=receivables.data?.items??[]; const pItems=payables.data?.items??[];
+  const totalReceivable=asNumber(receivables.data?.summary?.open); const overdueReceivable=asNumber(receivables.data?.summary?.overdue); const totalPayable=asNumber(payables.data?.summary?.open);
+  const projectedBalance=useMemo(()=>{let b=asNumber(cash.data?.currentBalance);for(const e of cash.data?.projected??[])b+=e.kind==="Entrada"?asNumber(e.amount):-asNumber(e.amount);return b},[cash.data]);
+  const projection=useMemo(()=>buildProjection(cash.data?.projected??[],asNumber(cash.data?.currentBalance)),[cash.data]);
+  const dueItems=useMemo(()=>[...rItems.filter(x=>asNumber(x.balance)>0).map(x=>({id:x.id,date:x.dueDate,title:x.customer||"Cliente",reference:x.reference||"Conta a receber",type:"A receber",amount:asNumber(x.balance),status:x.status})),...pItems.filter(x=>asNumber(x.balance)>0).map(x=>({id:x.id,date:x.dueDate,title:x.supplier||"Despesa",reference:x.reference||x.category||"Conta a pagar",type:"A pagar",amount:asNumber(x.balance),status:x.status}))].sort((a,b)=>a.date.localeCompare(b.date)).slice(0,8),[rItems,pItems]);
+  async function refresh(){await Promise.all([qc.invalidateQueries({queryKey:["receivables"]}),qc.invalidateQueries({queryKey:["payables"]}),qc.invalidateQueries({queryKey:["cashflow"]}),qc.invalidateQueries({queryKey:["dashboard"]}),qc.invalidateQueries({queryKey:["reports"]})]);}
+  return <InternalPage>
+    <PageHeader title="Financeiro" subtitle="Fluxo de caixa, pagamentos a prazo, parcelas em atraso e contas a pagar reais." right={<div className="flex flex-wrap gap-2"><PayableDialog onDone={refresh}/><TransactionDialog onDone={refresh}/></div>}/>
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <StatCard label="Saldo atual" value={brl(asNumber(cash.data?.currentBalance))} icon={Banknote} accent="green" detail="Movimentos efetivamente realizados"/>
+      <StatCard label="A receber" value={brl(totalReceivable)} icon={TrendingUp} accent="green" detail={overdueReceivable>0?`${brl(overdueReceivable)} vencidos`:`${rItems.filter(r=>asNumber(r.balance)>0).length} títulos em aberto`}/>
+      <StatCard label="A pagar" value={brl(totalPayable)} icon={TrendingDown} accent="red" detail={`${pItems.filter(p=>asNumber(p.balance)>0).length} compromissos`}/>
+      <StatCard label="Saldo projetado" value={brl(projectedBalance)} icon={CalendarDays} accent="graphite" detail="Considerando títulos nos próximos 30 dias"/>
+    </div>
+    <Tabs defaultValue="cashflow" className="space-y-4">
+      <TabsList className="finance-tabs"><TabsTrigger value="cashflow">Fluxo de Caixa</TabsTrigger><TabsTrigger value="receber">Contas a Receber</TabsTrigger><TabsTrigger value="pagar">Contas a Pagar</TabsTrigger></TabsList>
+      <TabsContent value="cashflow" className="space-y-4">
+        <div className="grid min-w-0 gap-4 xl:grid-cols-[1.6fr_.8fr]">
+          <section className="panel finance-chart-card"><div className="finance-chart-card__header"><div><span>FLUXO PROJETADO</span><h2>Próximos 30 dias</h2></div><div className="chart-legend-inline"><span><i className="income"/>Entradas</span><span><i className="expense"/>Saídas</span><span><i className="balance"/>Saldo projetado</span></div></div><div className="h-[340px]"><ResponsiveContainer width="100%" height="100%"><ComposedChart data={projection} margin={{left:-4,right:14,top:14,bottom:0}}><CartesianGrid vertical={false} stroke="var(--chart-grid)" strokeDasharray="3 3"/><XAxis dataKey="day" tick={{fontSize:10,fill:"var(--muted-foreground)"}} axisLine={false} tickLine={false}/><YAxis tickFormatter={v=>`${Math.round(v/1000)}k`} tick={{fontSize:10,fill:"var(--muted-foreground)"}} axisLine={false} tickLine={false}/><Tooltip contentStyle={chartTooltipStyle} formatter={(v:number)=>brl(v)}/><Bar dataKey="income" name="Entradas" fill="var(--accent-green)" radius={[4,4,0,0]}/><Bar dataKey="expense" name="Saídas" fill="var(--accent-red)" radius={[4,4,0,0]}/><Line type="monotone" dataKey="balance" name="Saldo projetado" stroke="var(--accent-graphite)" strokeWidth={2.6} dot={{r:3,fill:"var(--card)"}}/></ComposedChart></ResponsiveContainer></div></section>
+          <section className="panel due-card"><div className="financial-summary"><h2>Resumo financeiro</h2><p>Os atrasos são calculados automaticamente pelo backend.</p><div className="financial-summary__item" data-tone="green"><TrendingUp/><div><span>A receber</span><b>{brl(totalReceivable)}</b></div></div><div className="financial-summary__item" data-tone="red"><TrendingDown/><div><span>A pagar</span><b>{brl(totalPayable)}</b></div></div><div className="financial-summary__item" data-tone="red"><CalendarDays/><div><span>Recebimentos vencidos</span><b>{brl(overdueReceivable)}</b></div></div></div></section>
+        </div>
+        <section className="panel"><div className="table-section-heading"><div><span>MOVIMENTAÇÕES</span><h2>Movimentos efetivamente realizados</h2></div><TransactionDialog onDone={refresh}/></div><div className="data-table-wrap border-0"><table className="data-table min-w-[900px]"><thead><tr><th>Data</th><th>Histórico</th><th>Categoria</th><th>Entrada</th><th>Saída</th><th>Status</th></tr></thead><tbody>{(cash.data?.actual??[]).map(e=><tr key={e.id}><td>{datePt(e.date)}</td><td className="font-medium">{e.description}</td><td>{e.category||"—"}</td><td className="font-semibold text-[var(--accent-green)]">{e.kind==="Entrada"?brl(asNumber(e.amount)):"—"}</td><td className="font-semibold text-[var(--accent-red)]">{e.kind==="Saída"?brl(asNumber(e.amount)):"—"}</td><td><StatusPill label={e.status} tone="positive"/></td></tr>)}{!cash.isLoading&&(cash.data?.actual?.length??0)===0&&<tr><td colSpan={6} className="py-10 text-center text-muted-foreground">Nenhuma movimentação financeira no período.</td></tr>}</tbody></table></div></section>
+        <section className="panel due-card"><div className="due-card__header"><div><span>VENCIMENTOS</span><h2>Próximos compromissos e atrasos</h2></div><CalendarDays className="h-5 w-5 text-primary"/></div><div className="due-card__list">{dueItems.map(item=><div key={`${item.type}-${item.id}`} className="due-row"><div className="due-row__date"><b>{String(new Date(`${item.date}T12:00:00`).getDate()).padStart(2,"0")}</b><span>{new Intl.DateTimeFormat("pt-BR",{month:"short"}).format(new Date(`${item.date}T12:00:00`)).replace(".","").toUpperCase()}</span></div><div className="min-w-0"><b>{item.title}</b><span>{item.reference}</span></div><div className="text-right"><StatusPill label={item.status==="overdue"?"Vencido":item.type} tone={item.status==="overdue"?"danger":item.type==="A receber"?"positive":"danger"}/><strong>{brl(item.amount)}</strong></div></div>)}{dueItems.length===0&&<p className="py-8 text-center text-sm text-muted-foreground">Nenhum compromisso em aberto.</p>}</div></section>
+      </TabsContent>
+      <TabsContent value="receber" className="space-y-3">
+        <FinanceFilter query={search} setQuery={setSearch} status={status} setStatus={setStatus}/>
+        <div className="panel data-table-wrap"><table className="data-table min-w-[1050px]"><thead><tr><th>Cliente</th><th>Referência</th><th>Parcela</th><th>Vencimento</th><th>Valor</th><th>Recebido</th><th>Saldo</th><th>Status</th><th>Ação</th></tr></thead><tbody>{rItems.map(r=><tr key={r.id}><td className="font-medium">{r.customer||"—"}</td><td>{r.reference||"—"}</td><td>{r.installment??1}/{r.installmentCount??1}</td><td>{datePt(r.dueDate)}</td><td>{brl(asNumber(r.amount))}</td><td>{brl(asNumber(r.paid))}</td><td className="font-semibold">{brl(asNumber(r.balance))}</td><td><StatusPill label={paymentStatusLabel(r.status)} tone={statusToneForPayment(r.status)}/></td><td>{asNumber(r.balance)>0?<PaymentDialog kind="receive" item={r} methods={settings.data?.paymentMethods??[]} onDone={refresh}/>:<Check className="h-4 w-4 text-[var(--accent-green)]"/>}</td></tr>)}{!receivables.isLoading&&rItems.length===0&&<tr><td colSpan={9} className="py-10 text-center text-muted-foreground">Nenhuma conta a receber.</td></tr>}</tbody></table></div>
+      </TabsContent>
+      <TabsContent value="pagar" className="space-y-3">
+        <FinanceFilter query={search} setQuery={setSearch} status={status} setStatus={setStatus}/>
+        <div className="flex justify-end"><PayableDialog onDone={refresh}/></div>
+        <div className="panel data-table-wrap"><table className="data-table min-w-[1050px]"><thead><tr><th>Fornecedor / despesa</th><th>Categoria</th><th>Referência</th><th>Parcela</th><th>Vencimento</th><th>Valor</th><th>Pago</th><th>Saldo</th><th>Status</th><th>Ação</th></tr></thead><tbody>{pItems.map(p=><tr key={p.id}><td className="font-medium">{p.supplier||"—"}</td><td>{p.category||"—"}</td><td>{p.reference||"—"}</td><td>{p.installment??1}/{p.installmentCount??1}</td><td>{datePt(p.dueDate)}</td><td>{brl(asNumber(p.amount))}</td><td>{brl(asNumber(p.paid))}</td><td className="font-semibold">{brl(asNumber(p.balance))}</td><td><StatusPill label={paymentStatusLabel(p.status)} tone={statusToneForPayment(p.status)}/></td><td>{asNumber(p.balance)>0?<PaymentDialog kind="pay" item={p} methods={settings.data?.paymentMethods??[]} onDone={refresh}/>:<Check className="h-4 w-4 text-[var(--accent-green)]"/>}</td></tr>)}{!payables.isLoading&&pItems.length===0&&<tr><td colSpan={10} className="py-10 text-center text-muted-foreground">Nenhuma conta a pagar.</td></tr>}</tbody></table></div>
+      </TabsContent>
+    </Tabs>
+  </InternalPage>
 }
+
+function FinanceFilter({query,setQuery,status,setStatus}:{query:string;setQuery:(v:string)=>void;status:string;setStatus:(v:string)=>void}){return <FilterBar><div className="flex flex-col gap-3 lg:flex-row"><div className="relative min-w-0 flex-1"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"/><Input className="pl-9" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Buscar cliente, fornecedor ou referência..."/></div><select className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={status} onChange={e=>setStatus(e.target.value)}><option value="">Todos os status</option><option value="open">Em aberto</option><option value="partial">Parcial</option><option value="overdue">Vencido</option><option value="paid">Pago</option></select></div></FilterBar>}
+
+function PaymentDialog({kind,item,methods,onDone}:{kind:"receive"|"pay";item:ReceivableApi|PayableApi;methods:Array<{code:string;name:string}>;onDone:()=>Promise<void>|void}){
+  const [open,setOpen]=useState(false); const [amount,setAmount]=useState(String(asNumber(item.balance))); const [date,setDate]=useState(iso(new Date())); const [method,setMethod]=useState(item.methodCode||methods[0]?.code||"cash"); const [reference,setReference]=useState(""); const [notes,setNotes]=useState("");
+  const mutation=useMutation({mutationFn:()=>kind==="receive"?jaguarApi.finance.receive({receivableId:item.id,amount:Number(amount),paymentDate:date,paymentMethodCode:method,reference,notes}):jaguarApi.finance.pay({payableId:item.id,amount:Number(amount),paymentDate:date,paymentMethodCode:method,reference,notes}),onSuccess:async()=>{toast.success(kind==="receive"?"Recebimento registrado.":"Pagamento registrado.");setOpen(false);await onDone();},onError:e=>toast.error(e.message)});
+  return <Dialog open={open} onOpenChange={setOpen}><DialogTrigger asChild><Button size="sm" variant="outline">{kind==="receive"?"Registrar recebimento":"Marcar pago"}</Button></DialogTrigger><DialogContent><form onSubmit={e=>{e.preventDefault();mutation.mutate();}}><DialogHeader><DialogTitle>{kind==="receive"?"Registrar recebimento":"Registrar pagamento"}</DialogTitle><DialogDescription>Saldo atual: {brl(asNumber(item.balance))}. Pagamentos parciais são permitidos.</DialogDescription></DialogHeader><div className="grid gap-4 py-4 sm:grid-cols-2"><Field label="Valor"><Input required type="number" min="0.01" max={asNumber(item.balance)} step="0.01" value={amount} onChange={e=>setAmount(e.target.value)}/></Field><Field label="Data"><Input required type="date" value={date} onChange={e=>setDate(e.target.value)}/></Field><Field label="Forma"><select className="h-10 rounded-md border border-input bg-background px-3" value={method} onChange={e=>setMethod(e.target.value)}>{methods.map(m=><option key={m.code} value={m.code}>{m.name}</option>)}{methods.length===0&&<option value="cash">Dinheiro</option>}</select></Field><Field label="Referência"><Input value={reference} onChange={e=>setReference(e.target.value)}/></Field><label className="form-field sm:col-span-2"><span>Observações</span><Input value={notes} onChange={e=>setNotes(e.target.value)}/></label></div><DialogFooter><Button type="button" variant="outline" onClick={()=>setOpen(false)}>Cancelar</Button><Button disabled={mutation.isPending}>{mutation.isPending?"Registrando...":"Confirmar"}</Button></DialogFooter></form></DialogContent></Dialog>
+}
+
+function PayableDialog({onDone}:{onDone:()=>Promise<void>|void}){
+  const [open,setOpen]=useState(false); const settings=useQuery({queryKey:["settings-payable"],queryFn:jaguarApi.settings.get,enabled:open}); const suppliers=useQuery({queryKey:["suppliers-payable"],queryFn:()=>jaguarApi.suppliers.list({limit:200}),enabled:open});
+  const [description,setDescription]=useState(""); const [amount,setAmount]=useState(""); const [supplierId,setSupplierId]=useState(""); const [categoryId,setCategoryId]=useState(""); const [method,setMethod]=useState("bank_transfer"); const [count,setCount]=useState("1"); const [firstDue,setFirstDue]=useState(iso(new Date())); const [dueDay,setDueDay]=useState(String(new Date().getDate())); const [notes,setNotes]=useState("");
+  const mutation=useMutation({mutationFn:()=>jaguarApi.finance.createPayable({description,amount:Number(amount),supplierId:supplierId||undefined,categoryId:categoryId||undefined,paymentTerms:{methodCode:method,installmentsCount:Number(count||1),firstDueDate:firstDue,dueDay:Number(dueDay||new Date().getDate())},notes}),onSuccess:async()=>{toast.success("Conta a pagar criada.");setOpen(false);setDescription("");setAmount("");await onDone();},onError:e=>toast.error(e.message)});
+  const expenseCategories=(settings.data?.financialCategories??[]).filter(c=>c.direction==="expense");
+  return <Dialog open={open} onOpenChange={setOpen}><DialogTrigger asChild><Button variant="outline"><Plus className="mr-2 h-4 w-4"/>Nova conta a pagar</Button></DialogTrigger><DialogContent className="sm:max-w-2xl"><form onSubmit={e=>{e.preventDefault();mutation.mutate();}}><DialogHeader><DialogTitle>Nova conta a pagar</DialogTitle><DialogDescription>Para compras de estoque, prefira confirmar a compra no módulo Estoque; ela gera a conta automaticamente.</DialogDescription></DialogHeader><div className="grid gap-4 py-4 sm:grid-cols-2"><Field label="Descrição"><Input required value={description} onChange={e=>setDescription(e.target.value)}/></Field><Field label="Valor total"><Input required type="number" min="0.01" step="0.01" value={amount} onChange={e=>setAmount(e.target.value)}/></Field><Field label="Fornecedor (opcional)"><select className="h-10 rounded-md border border-input bg-background px-3" value={supplierId} onChange={e=>setSupplierId(e.target.value)}><option value="">Sem fornecedor</option>{suppliers.data?.items.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></Field><Field label="Categoria"><select className="h-10 rounded-md border border-input bg-background px-3" value={categoryId} onChange={e=>setCategoryId(e.target.value)}><option value="">Sem categoria</option>{expenseCategories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></Field><Field label="Forma prevista"><select className="h-10 rounded-md border border-input bg-background px-3" value={method} onChange={e=>setMethod(e.target.value)}>{settings.data?.paymentMethods.map(m=><option key={m.code} value={m.code}>{m.name}</option>)}</select></Field><Field label="Parcelas"><Input type="number" min="1" max="60" value={count} onChange={e=>setCount(e.target.value)}/></Field><Field label="Primeiro vencimento"><Input type="date" value={firstDue} onChange={e=>setFirstDue(e.target.value)}/></Field><Field label="Dia dos próximos vencimentos"><Input type="number" min="1" max="31" value={dueDay} onChange={e=>setDueDay(e.target.value)}/></Field><label className="form-field sm:col-span-2"><span>Observações</span><Input value={notes} onChange={e=>setNotes(e.target.value)}/></label></div><DialogFooter><Button type="button" variant="outline" onClick={()=>setOpen(false)}>Cancelar</Button><Button disabled={mutation.isPending}>{mutation.isPending?"Salvando...":"Criar conta"}</Button></DialogFooter></form></DialogContent></Dialog>
+}
+
+function TransactionDialog({onDone}:{onDone:()=>Promise<void>|void}){
+  const [open,setOpen]=useState(false); const settings=useQuery({queryKey:["settings-transaction"],queryFn:jaguarApi.settings.get,enabled:open}); const [direction,setDirection]=useState("outflow"); const [date,setDate]=useState(iso(new Date())); const [amount,setAmount]=useState(""); const [categoryId,setCategoryId]=useState(""); const [method,setMethod]=useState("cash"); const [description,setDescription]=useState(""); const [notes,setNotes]=useState("");
+  const categories=(settings.data?.financialCategories??[]).filter(c=>c.direction===(direction==="inflow"?"income":"expense"));
+  const mutation=useMutation({mutationFn:()=>jaguarApi.finance.manualTransaction({direction,date,amount:Number(amount),categoryId:categoryId||undefined,paymentMethodCode:method,description,notes}),onSuccess:async()=>{toast.success("Lançamento financeiro registrado.");setOpen(false);setAmount("");setDescription("");await onDone();},onError:e=>toast.error(e.message)});
+  return <Dialog open={open} onOpenChange={setOpen}><DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4"/>Novo lançamento</Button></DialogTrigger><DialogContent><form onSubmit={e=>{e.preventDefault();mutation.mutate();}}><DialogHeader><DialogTitle>Lançamento manual</DialogTitle><DialogDescription>Use somente para entradas/saídas que não vieram de contas a receber/pagar.</DialogDescription></DialogHeader><div className="grid gap-4 py-4 sm:grid-cols-2"><Field label="Tipo"><select className="h-10 rounded-md border border-input bg-background px-3" value={direction} onChange={e=>{setDirection(e.target.value);setCategoryId("")}}><option value="inflow">Entrada</option><option value="outflow">Saída</option></select></Field><Field label="Data"><Input type="date" value={date} onChange={e=>setDate(e.target.value)}/></Field><Field label="Valor"><Input required type="number" min="0.01" step="0.01" value={amount} onChange={e=>setAmount(e.target.value)}/></Field><Field label="Categoria"><select className="h-10 rounded-md border border-input bg-background px-3" value={categoryId} onChange={e=>setCategoryId(e.target.value)}><option value="">Sem categoria</option>{categories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></Field><Field label="Forma"><select className="h-10 rounded-md border border-input bg-background px-3" value={method} onChange={e=>setMethod(e.target.value)}>{settings.data?.paymentMethods.map(m=><option key={m.code} value={m.code}>{m.name}</option>)}</select></Field><Field label="Descrição"><Input required value={description} onChange={e=>setDescription(e.target.value)}/></Field><label className="form-field sm:col-span-2"><span>Observações</span><Input value={notes} onChange={e=>setNotes(e.target.value)}/></label></div><DialogFooter><Button type="button" variant="outline" onClick={()=>setOpen(false)}>Cancelar</Button><Button disabled={mutation.isPending}>Registrar</Button></DialogFooter></form></DialogContent></Dialog>
+}
+
+function buildProjection(entries:Array<{date:string;kind:string;amount:number|string}>,current:number){const by=new Map<string,{income:number;expense:number}>();for(const e of entries){const r=by.get(e.date)??{income:0,expense:0};if(e.kind==="Entrada")r.income+=asNumber(e.amount);else r.expense+=asNumber(e.amount);by.set(e.date,r)}let balance=current;return [...by.entries()].sort(([a],[b])=>a.localeCompare(b)).map(([date,v])=>{balance+=v.income-v.expense;return {day:datePt(date).slice(0,5),...v,balance}})}
+function Field({label,children}:{label:string;children:ReactNode}){return <label className="form-field"><span>{label}</span>{children}</label>}

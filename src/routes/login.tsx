@@ -25,7 +25,7 @@ function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const [username, setUsername] = useState("admin");
-  const [password, setPassword] = useState("demo");
+  const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
   const [remember, setRemember] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -144,7 +144,7 @@ function LoginPage() {
               <Checkbox checked={remember} onCheckedChange={(v) => setRemember(v === true)} />
               Manter conectado
             </label>
-            <button type="button" className="font-semibold text-primary">
+            <button type="button" className="font-semibold text-primary" onClick={() => setError("Solicite ao administrador da Jaguar a redefinição da sua senha em Configurações → Usuários.")}>
               Esqueci minha senha
             </button>
           </div>
@@ -167,7 +167,7 @@ function LoginPage() {
           </Button>
           <div className="jaguar-login__security">
             <ShieldCheck />
-            <span>Protótipo de homologação · dados mockados</span>
+            <span>Conexão segura com o backend Jaguar</span>
           </div>
         </form>
       </section>

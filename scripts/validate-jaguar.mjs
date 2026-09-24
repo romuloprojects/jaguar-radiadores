@@ -13,7 +13,8 @@ const required = [
   "src/routes/fornecedores.tsx",
   "src/routes/relatorios.tsx",
   "src/routes/configuracoes.tsx",
-  "src/data/mock/jaguar.ts",
+  "src/services/jaguarApi.ts",
+  "src/routes/api/jaguar/$.ts",
 ];
 for (const file of required) {
   if (!fs.existsSync(path.join(root, file))) throw new Error(`Arquivo obrigatório ausente: ${file}`);

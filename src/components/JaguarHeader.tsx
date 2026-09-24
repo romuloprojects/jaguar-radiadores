@@ -102,7 +102,7 @@ export function JaguarHeader() {
                 </span>
                 <span className="hidden text-left md:block">
                   <b>{session?.user.displayName ?? "Usuário"}</b>
-                  <small>Administrador</small>
+                  <small>{session?.user.role === "ADMIN" ? "Administrador" : "Operador"}</small>
                 </span>
                 <ChevronDown className="hidden h-4 w-4 md:block" />
               </button>

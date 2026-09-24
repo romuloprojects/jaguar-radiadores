@@ -1,33 +1,45 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, CarFront, CheckCircle2, FileText, Printer, UserRound, WalletCards } from "lucide-react";
+import { ArrowLeft, CarFront, CheckCircle2, Clipboard, FileText, Save, UserRound, WalletCards, XCircle } from "lucide-react";
+import { useEffect, useState, type FormEvent } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { InternalPage, SectionPanel, StatusPill } from "@/components/InternalPage";
 import { PageHeader } from "@/components/ui-helpers";
 import { Button } from "@/components/ui/button";
-import { quotes, customers } from "@/data/mock/jaguar";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { jaguarApi } from "@/services/jaguarApi";
 import { brl } from "@/utils/format";
+import { asNumber, authorizationLabel, datePt, paymentMethodLabel, paymentStatusLabel, quoteStatusLabel, statusToneForPayment, statusToneForQuote } from "@/utils/api-format";
 
 export const Route = createFileRoute("/orcamentos_/$orcamentoId")({ component: QuoteDetailPage });
 
-function QuoteDetailPage() {
-  const { orcamentoId } = Route.useParams();
-  const quote = quotes.find((q) => q.id === orcamentoId) ?? quotes[0];
-  const customer = customers.find((c) => c.id === quote.customerId);
-  return (
-    <InternalPage>
-      <PageHeader eyebrow="ORÇAMENTO / ATENDIMENTO" title={quote.number} subtitle={`Emitido em ${quote.date} · ${quote.customerName}`} icon={FileText} right={<div className="flex gap-2"><Button asChild variant="outline"><Link to="/orcamentos"><ArrowLeft className="mr-2 h-4 w-4"/>Voltar</Link></Button><Button variant="outline"><Printer className="mr-2 h-4 w-4"/>Gerar PDF</Button></div>} />
-      <div className="flex flex-wrap gap-2"><StatusPill label={quote.status} tone={quote.status === "Pago" ? "positive" : quote.status === "Em execução" ? "info" : "warning"}/>{quote.approvalMethod && <StatusPill label={`Aprovação: ${quote.approvalMethod}`} tone="neutral"/>}</div>
-      <div className="grid gap-4 xl:grid-cols-2">
-        <SectionPanel title="Cliente" icon={UserRound}><div className="detail-grid"><div><span>Nome / Razão Social</span><b>{quote.customerName}</b></div><div><span>CPF / CNPJ</span><b>{customer?.document ?? "—"}</b></div><div><span>Telefone</span><b>{customer?.phone ?? "—"}</b></div><div><span>Responsável</span><b>{customer?.responsible ?? "—"}</b></div><div className="sm:col-span-2"><span>Endereço</span><b>{customer ? `${customer.address}, ${customer.city} - ${customer.state}` : "—"}</b></div></div></SectionPanel>
-        <SectionPanel title="Veículo / equipamento" icon={CarFront}><div className="detail-grid"><div><span>Identificação</span><b>{quote.vehicle}</b></div><div><span>Placa</span><b>{quote.plate ?? "Não informado"}</b></div><div className="sm:col-span-2"><span>Observações</span><b>{quote.notes ?? "Sem observações"}</b></div></div></SectionPanel>
-      </div>
-      <SectionPanel title="Peças e serviços" icon={CheckCircle2}>
-        <div className="data-table-wrap border-0"><table className="data-table min-w-[700px]"><thead><tr><th>Tipo</th><th>Descrição</th><th>Qtd.</th><th>Valor unit.</th><th>Total</th></tr></thead><tbody>{quote.items.length ? quote.items.map((item) => <tr key={item.id}><td><StatusPill label={item.type} tone={item.type === "Peça" ? "warning" : "info"}/></td><td>{item.description}</td><td>{item.quantity}</td><td>{brl(item.unitPrice)}</td><td className="font-semibold">{brl(item.quantity * item.unitPrice)}</td></tr>) : <tr><td colSpan={5} className="py-8 text-center text-muted-foreground">Itens resumidos no mock desta versão.</td></tr>}</tbody></table></div>
-        <div className="mt-4 flex justify-end"><div className="quote-total-box"><span>Total geral</span><b>{brl(quote.total)}</b></div></div>
-      </SectionPanel>
-      <div className="grid gap-4 xl:grid-cols-2">
-        <SectionPanel title="Pagamento" icon={WalletCards}><div className="detail-grid"><div><span>Forma de pagamento</span><b>{quote.paymentMethod}</b></div><div><span>Status financeiro</span><b>{quote.status === "Pago" ? "Recebido" : "Pendente / conforme condição"}</b></div></div></SectionPanel>
-        <SectionPanel title="Aprovação e assinatura" icon={CheckCircle2}><div className="detail-grid"><div><span>Forma de aprovação</span><b>{quote.approvalMethod ?? "Ainda não registrada"}</b></div><div><span>Assinatura</span><b>{quote.approvalMethod === "Assinatura" ? "Registrada" : "Opcional"}</b></div></div></SectionPanel>
-      </div>
-    </InternalPage>
-  );
+function QuoteDetailPage(){
+  const {orcamentoId}=Route.useParams(); const qc=useQueryClient();
+  const q=useQuery({queryKey:["quote",orcamentoId],queryFn:()=>jaguarApi.quotes.detail(orcamentoId)}); const quote=q.data?.quote;
+  const [issue,setIssue]=useState(""); const [diagnosis,setDiagnosis]=useState(""); const [notes,setNotes]=useState("");
+  useEffect(()=>{if(quote){setIssue(quote.issueReported??"");setDiagnosis(quote.diagnosis??"");setNotes(quote.notes??"");}},[quote]);
+  async function refresh(){await qc.invalidateQueries({queryKey:["quote",orcamentoId]});await qc.invalidateQueries({queryKey:["quotes"]});await qc.invalidateQueries({queryKey:["dashboard"]});await qc.invalidateQueries({queryKey:["finance"]});}
+  const update=useMutation({mutationFn:()=>jaguarApi.quotes.update({id:orcamentoId,issueReported:issue,diagnosis,notes}),onSuccess:async()=>{toast.success("Atendimento atualizado.");await refresh();},onError:e=>toast.error(e.message)});
+  const complete=useMutation({mutationFn:()=>jaguarApi.quotes.complete(orcamentoId),onSuccess:async()=>{toast.success("Atendimento concluído e estoque consumido conforme configuração.");await refresh();},onError:e=>toast.error(e.message)});
+  const cancel=useMutation({mutationFn:()=>jaguarApi.quotes.cancel(orcamentoId),onSuccess:async()=>{toast.success("Atendimento cancelado.");await refresh();},onError:e=>toast.error(e.message)});
+  const document=useMutation({mutationFn:()=>jaguarApi.quotes.document(orcamentoId),onSuccess:async(r)=>{const pix=(r.document as any)?.pix?.copyPaste;if(pix){await navigator.clipboard.writeText(pix);toast.success("PIX copia e cola gerado e copiado.");}else toast.success("Dados do documento validados; PIX ainda não configurado.");},onError:e=>toast.error(e.message)});
+  if(q.isLoading)return <InternalPage><div className="panel p-8 text-muted-foreground">Carregando atendimento...</div></InternalPage>;
+  if(q.error||!quote)return <InternalPage><div className="panel p-8 text-destructive">{q.error?.message??"Atendimento não encontrado."}</div></InternalPage>;
+  const customer=quote.customer||{}; const vehicle=quote.vehicle||{}; const paymentStatus=quote.financial?.paymentStatus;
+  return <InternalPage>
+    <PageHeader eyebrow="ORÇAMENTO / ATENDIMENTO" title={quote.number} subtitle={`Emitido em ${datePt(quote.date)} · ${customer.name??"Cliente"}`} icon={FileText} right={<div className="flex flex-wrap gap-2"><Button asChild variant="outline"><Link to="/orcamentos"><ArrowLeft className="mr-2 h-4 w-4"/>Voltar</Link></Button><Button variant="outline" onClick={()=>document.mutate()} disabled={document.isPending}><Clipboard className="mr-2 h-4 w-4"/>Gerar PIX/documento</Button>{quote.status==="in_progress"&&<><Button variant="outline" onClick={()=>cancel.mutate()} disabled={cancel.isPending}><XCircle className="mr-2 h-4 w-4"/>Cancelar</Button><Button onClick={()=>complete.mutate()} disabled={complete.isPending}><CheckCircle2 className="mr-2 h-4 w-4"/>Concluir serviço</Button></>}</div>} />
+    <div className="flex flex-wrap gap-2"><StatusPill label={quoteStatusLabel(quote.status)} tone={statusToneForQuote(quote.status)}/><StatusPill label={`Financeiro: ${paymentStatusLabel(paymentStatus)}`} tone={statusToneForPayment(paymentStatus)}/>{quote.authorizationMethod&&<StatusPill label={`Autorização: ${authorizationLabel(quote.authorizationMethod)}`} tone="neutral"/>}</div>
+    <div className="grid gap-4 xl:grid-cols-2"><SectionPanel title="Cliente" icon={UserRound}><div className="detail-grid"><div><span>Nome / Razão Social</span><b>{customer.name??"—"}</b></div><div><span>CPF / CNPJ</span><b>{customer.document??"—"}</b></div><div><span>Telefone</span><b>{customer.phone??"—"}</b></div><div><span>Responsável</span><b>{customer.responsible??"—"}</b></div><div className="sm:col-span-2"><span>Endereço</span><b>{[customer.address,customer.city,customer.state].filter(Boolean).join(" · ")||"—"}</b></div></div></SectionPanel><SectionPanel title="Veículo / equipamento" icon={CarFront}><div className="detail-grid"><div><span>Identificação</span><b>{[vehicle.brand,vehicle.model,vehicle.equipmentDescription].filter(Boolean).join(" ")||"—"}</b></div><div><span>Placa</span><b>{vehicle.plate??"Não informado"}</b></div><div className="sm:col-span-2"><span>Observações do veículo</span><b>{vehicle.notes??"—"}</b></div></div></SectionPanel></div>
+    <SectionPanel title="Peças e serviços" icon={CheckCircle2}><div className="data-table-wrap border-0"><table className="data-table min-w-[760px]"><thead><tr><th>Tipo</th><th>Descrição</th><th>Qtd.</th><th>Valor unit.</th><th>Total</th></tr></thead><tbody>{quote.items.map(item=><tr key={item.id}><td><StatusPill label={item.type} tone={item.typeCode==="product"?"warning":"info"}/></td><td>{item.description}{item.typeCode==="product"&&item.stockAvailable!=null&&<small className="block text-muted-foreground">Disponível agora: {asNumber(item.stockAvailable)}</small>}</td><td>{asNumber(item.quantity)}</td><td>{brl(asNumber(item.unitPrice))}</td><td className="font-semibold">{brl(asNumber(item.total))}</td></tr>)}</tbody></table></div><div className="mt-4 flex justify-end"><div className="quote-total-box"><span>Total geral</span><b>{brl(asNumber(quote.total))}</b></div></div></SectionPanel>
+    <div className="grid gap-4 xl:grid-cols-2"><SectionPanel title="Atendimento" icon={FileText} right={quote.status==="in_progress"?<Button size="sm" onClick={()=>update.mutate()} disabled={update.isPending}><Save className="mr-2 h-4 w-4"/>Salvar</Button>:undefined}><div className="space-y-3"><label className="form-field"><span>Problema relatado</span><Textarea value={issue} onChange={e=>setIssue(e.target.value)} disabled={quote.status!=="in_progress"}/></label><label className="form-field"><span>Diagnóstico</span><Textarea value={diagnosis} onChange={e=>setDiagnosis(e.target.value)} disabled={quote.status!=="in_progress"}/></label><label className="form-field"><span>Observações</span><Textarea value={notes} onChange={e=>setNotes(e.target.value)} disabled={quote.status!=="in_progress"}/></label></div></SectionPanel><SectionPanel title="Pagamento" icon={WalletCards}><div className="detail-grid"><div><span>Forma prevista</span><b>{paymentMethodLabel((quote.paymentTerms as any)?.methodCode)}</b></div><div><span>Status financeiro</span><StatusPill label={paymentStatusLabel(paymentStatus)} tone={statusToneForPayment(paymentStatus)}/></div><div><span>Total recebido</span><b>{brl(asNumber(quote.financial?.paidTotal))}</b></div><div><span>Saldo</span><b>{brl(asNumber(quote.financial?.balance))}</b></div></div><div className="mt-4 space-y-2">{quote.receivables?.map(r=><div className="record-card" key={r.id}><div><b>Parcela {r.number}/{r.count}</b><span>Vence {datePt(r.dueDate)} · {paymentStatusLabel(r.status)}</span></div><div className="flex items-center gap-2"><b>{brl(asNumber(r.balance))}</b>{asNumber(r.balance)>0&&<ReceiveDialog receivable={r} onDone={refresh}/>}</div></div>)}</div></SectionPanel></div>
+  </InternalPage>;
+}
+
+function ReceiveDialog({receivable,onDone}:{receivable:any;onDone:()=>Promise<void>}){
+  const [open,setOpen]=useState(false); const [amount,setAmount]=useState(asNumber(receivable.balance)); const [method,setMethod]=useState(receivable.methodCode||"cash"); const [date,setDate]=useState(new Date().toISOString().slice(0,10));
+  const mutation=useMutation({mutationFn:()=>jaguarApi.finance.receive({receivableId:receivable.id,amount,paymentDate:date,paymentMethodCode:method}),onSuccess:async()=>{toast.success("Recebimento registrado.");setOpen(false);await onDone();},onError:e=>toast.error(e.message)});
+  function submit(e:FormEvent){e.preventDefault();mutation.mutate();}
+  return <Dialog open={open} onOpenChange={setOpen}><DialogTrigger asChild><Button size="sm" variant="outline">Registrar pagamento</Button></DialogTrigger><DialogContent><form onSubmit={submit}><DialogHeader><DialogTitle>Registrar recebimento</DialogTitle><DialogDescription>Permite pagamento total ou parcial desta parcela.</DialogDescription></DialogHeader><div className="form-grid py-4"><label className="form-field"><span>Valor</span><Input type="number" step="0.01" min="0.01" max={asNumber(receivable.balance)} value={amount} onChange={e=>setAmount(Number(e.target.value))}/></label><label className="form-field"><span>Data</span><Input type="date" value={date} onChange={e=>setDate(e.target.value)}/></label><label className="form-field sm:col-span-2"><span>Forma</span><select className="h-10 rounded-md border bg-background px-3" value={method} onChange={e=>setMethod(e.target.value)}><option value="cash">Dinheiro</option><option value="pix">PIX</option><option value="bank_transfer">Transferência</option><option value="debit_card">Cartão de débito</option><option value="credit_card">Cartão de crédito</option><option value="other">Outro</option></select></label></div><DialogFooter><Button type="button" variant="outline" onClick={()=>setOpen(false)}>Cancelar</Button><Button disabled={mutation.isPending}>{mutation.isPending?"Registrando...":"Confirmar pagamento"}</Button></DialogFooter></form></DialogContent></Dialog>;
 }
