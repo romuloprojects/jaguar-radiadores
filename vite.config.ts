@@ -5,7 +5,7 @@ import { defineConfig } from "vite";
 import { nitro } from "nitro/vite";
 
 export default defineConfig({
-  server: { allowedHosts: [".2see.io"] },
+  server: { allowedHosts: ["jaguar-radiadores.facilities-ai.com.br"] },
   resolve: { tsconfigPaths: true },
   plugins: [tailwindcss(), tanstackStart(), viteReact(), nitro()],
 });

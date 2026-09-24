@@ -63,11 +63,11 @@ export function JaguarHeader() {
         <div className="jaguar-header__actions">
           <div className="jaguar-global-search hidden lg:flex">
             <Search className="h-4 w-4" />
-            <Input placeholder="Buscar cliente, telefone, orçamento..." aria-label="Busca global" />
+            <Input placeholder="Buscar clientes, veículos, orçamentos..." aria-label="Busca global" />
           </div>
           <ThemeToggle />
           <Button variant="ghost" size="icon" className="relative h-9 w-9 rounded-xl text-white/70 hover:bg-white/10 hover:text-white">
-            <Bell className="h-4 w-4" /><span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-primary" />
+            <Bell className="h-4 w-4" /><span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[#ff2633]" />
           </Button>
 
           <DropdownMenu>

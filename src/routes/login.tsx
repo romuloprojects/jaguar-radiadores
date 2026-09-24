@@ -31,22 +31,29 @@ function LoginPage() {
       await navigate({ to: "/", replace: true });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Não foi possível entrar.");
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
-    <main className="jaguar-login">
-      <section className="jaguar-login__hero">
-        <img src="/images/jaguar-login-hero.jpg" alt="Jaguar Radiadores" className="jaguar-login__hero-image" />
-        <div className="jaguar-login__overlay" />
-        <div className="jaguar-login__hero-content">
-          <img src="/images/jaguar-logo-source.jpg" alt="Jaguar Radiadores" className="jaguar-login__logo" />
-          <div className="jaguar-login__copy">
-            <span>GESTÃO INTEGRADA</span>
-            <h1>Da oficina ao financeiro,<br/>tudo em um só lugar.</h1>
-            <p>Atendimentos, peças, estoque, fornecedores e caixa conectados para uma rotina mais simples.</p>
+    <main className="jaguar-login jaguar-login--v2">
+      <section className="jaguar-login__brand-panel">
+        <div className="jaguar-login__brand-grid" aria-hidden="true" />
+        <div className="jaguar-login__brand-glow" aria-hidden="true" />
+        <div className="jaguar-login__brand-content">
+          <div className="jaguar-login__brand-top">
+            <img src="/images/jaguar-logo-source.jpg" alt="Jaguar Radiadores" className="jaguar-login__brand-logo" />
+            <span className="jaguar-login__brand-tag">PLATAFORMA DE GESTÃO</span>
           </div>
-          <div className="jaguar-login__features">
+
+          <div className="jaguar-login__brand-message">
+            <span>GESTÃO INTEGRADA</span>
+            <h1>Controle a operação<br />com mais clareza.</h1>
+            <p>Orçamentos, estoque, fornecedores e financeiro conectados em uma experiência simples, rápida e confiável.</p>
+          </div>
+
+          <div className="jaguar-login__features jaguar-login__features--v2">
             <div><Wrench/><span><b>Atendimentos</b><small>Orçamentos e serviços</small></span></div>
             <div><Warehouse/><span><b>Estoque</b><small>Peças e movimentações</small></span></div>
             <div><WalletCards/><span><b>Financeiro</b><small>Receber, pagar e fluxo</small></span></div>
@@ -54,8 +61,8 @@ function LoginPage() {
         </div>
       </section>
 
-      <section className="jaguar-login__access">
-        <form className="jaguar-login__card" onSubmit={submit}>
+      <section className="jaguar-login__access jaguar-login__access--v2">
+        <form className="jaguar-login__card jaguar-login__card--v2" onSubmit={submit}>
           <div className="jaguar-login__mobile-brand"><img src="/images/jaguar-logo-source.jpg" alt="Jaguar Radiadores" /></div>
           <div>
             <span className="jaguar-login__eyebrow">JAGUAR RADIADORES</span>
@@ -76,11 +83,11 @@ function LoginPage() {
 
           <div className="flex items-center justify-between gap-3 text-xs">
             <label className="flex items-center gap-2 text-muted-foreground"><Checkbox checked={remember} onCheckedChange={(v) => setRemember(v === true)} />Manter conectado</label>
-            <button type="button" className="font-medium text-primary">Esqueci minha senha</button>
+            <button type="button" className="font-semibold text-primary">Esqueci minha senha</button>
           </div>
 
           {error && <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{error}</div>}
-          <Button type="submit" className="h-11 w-full rounded-xl text-sm font-semibold" disabled={loading}>{loading ? "Entrando..." : "Entrar"}</Button>
+          <Button type="submit" className="jaguar-login__submit h-12 w-full rounded-xl text-sm font-semibold" disabled={loading}>{loading ? "Entrando..." : "Entrar"}</Button>
           <div className="jaguar-login__security"><ShieldCheck/><span>Protótipo de homologação · dados mockados</span></div>
         </form>
       </section>

@@ -1,14 +1,14 @@
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type Tone = "green" | "blue" | "red" | "amber" | "slate";
+type Tone = "green" | "red" | "amber" | "slate" | "graphite";
 
 export function KpiCard({
   icon: Icon,
   label,
   value,
   detail,
-  tone = "slate",
+  tone = "graphite",
   className,
 }: {
   icon: LucideIcon;

@@ -2,8 +2,8 @@ import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-export type AccentName = "blue" | "green" | "yellow" | "purple" | "red" | "orange";
-const ACCENT_VAR: Record<AccentName, string> = { blue: "var(--accent-blue)", green: "var(--accent-green)", yellow: "var(--accent-yellow)", purple: "var(--accent-purple)", red: "var(--accent-red)", orange: "var(--accent-orange)" };
+export type AccentName = "blue" | "green" | "yellow" | "purple" | "red" | "orange" | "graphite";
+const ACCENT_VAR: Record<AccentName, string> = { blue: "var(--accent-blue)", green: "var(--accent-green)", yellow: "var(--accent-yellow)", purple: "var(--accent-purple)", red: "var(--accent-red)", orange: "var(--accent-orange)", graphite: "var(--accent-graphite)" };
 
 export function InternalPage({ children, className }: { children: ReactNode; className?: string }) { return <div className={cn("internal-page space-y-4", className)}>{children}</div>; }
 

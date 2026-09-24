@@ -62,6 +62,7 @@ export interface Quote {
 
 export interface StockItem {
   id: string;
+  imageUrl?: string;
   code: string;
   description: string;
   category: string;
