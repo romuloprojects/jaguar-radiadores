@@ -1,19 +1,38 @@
-# EasyPanel / Nixpacks
-
-Este projeto é TanStack Start com saída SSR/Nitro. Ele não deve ser executado pelo Caddy como SPA estática.
+# EasyPanel / Nixpacks — Jaguar Radiadores v0.1.2
 
 ## Variáveis recomendadas
 
 ```text
 NIXPACKS_NODE_VERSION=22
-NIXPACKS_BUN_VERSION=latest
+NIXPACKS_BUN_VERSION=1.3.0
 PORT=8003
 ```
 
-Não é necessário configurar `NIXPACKS_INSTALL_CMD`, `NIXPACKS_BUILD_CMD` ou `NIXPACKS_START_CMD`, pois `nixpacks.toml` já fixa:
+## Comandos esperados no log
 
-- instalação: `bun install --frozen-lockfile`
-- build: `bun run build`
-- start: `node .output/server/index.mjs`
+```text
+install │ bun install
+build   │ bun run build
+start   │ node .output/server/index.mjs
+```
 
-O `package.json` também possui `start` e `packageManager`, e o `bun.lock` foi restaurado para manter a instalação reproduzível.
+## Por que não usamos `--frozen-lockfile`
+
+O `bun.lock` veio da base ANCAR e o manifesto foi adaptado para Jaguar. No EasyPanel,
+Bun 1.3.0 detectou que precisaria atualizar o lockfile e abortou porque ele estava
+congelado. Nesta fase de homologação mockada permitimos ao Bun reconciliar o lockfile
+durante o build.
+
+Quando estabilizarmos as dependências, podemos regenerar e commitar um lockfile novo
+com a mesma versão do Bun e voltar a usar `--frozen-lockfile`.
+
+## Porta
+
+O processo Nitro/TanStack Start deve escutar `PORT=8003`. Configure a porta interna/
+target do serviço no EasyPanel também como 8003.
+
+## Observação sobre Caddy
+
+O Nixpacks pode ainda exibir uma fase `caddy` por detectar Vite. Isso não é o processo
+que inicia a aplicação: o comando de start explícito continua sendo o servidor Node
+em `.output/server/index.mjs`.

@@ -1,8 +1,10 @@
 # Jaguar Radiadores - EasyPanel/Nixpacks
-# TanStack Start is an SSR/server application. Do not serve it as a Vite SPA via Caddy.
+# TanStack Start is an SSR/server application.
+# Bun 1.3.0 (seen in EasyPanel/Nixpacks) wants to refresh the inherited lockfile,
+# so the install phase intentionally does NOT use --frozen-lockfile.
 
 [phases.install]
-cmds = ["bun install --frozen-lockfile"]
+cmds = ["bun install"]
 
 [phases.build]
 cmds = ["bun run build"]

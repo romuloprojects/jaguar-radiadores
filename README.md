@@ -65,3 +65,8 @@ npm run validate:jaguar
 ## Próxima fase
 
 Após homologação do frontend, o Marco 3 conectará PostgreSQL + n8n, autenticação real, persistência, geração de PDF, PIX e regras transacionais.
+
+
+## EasyPanel v0.1.2
+
+Para deploy via Nixpacks, consulte `EASYPANEL.md`. A instalação usa `bun install` sem `--frozen-lockfile` durante a homologação mockada.
