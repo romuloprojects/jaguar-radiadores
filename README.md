@@ -1,4 +1,4 @@
-# Jaguar Radiadores — Frontend API Real V1
+# Jaguar Radiadores — Frontend API Real V1.1
 
 Frontend homologado da Jaguar Radiadores conectado ao backend real n8n + PostgreSQL.
 
@@ -27,11 +27,11 @@ O token de sessão do n8n **não fica disponível para o JavaScript do navegador
 - Login / troca de senha: autenticação PostgreSQL via workflow 10
 - Visão Geral: dashboard, faturamento anual e fluxo projetado
 - Clientes: listagem, busca, cadastro, edição, veículos/equipamentos e histórico
-- Orçamentos: listagem, criação, edição, conclusão, cancelamento, documento/PIX e recebimentos
+- Orçamentos: listagem, criação, edição, conclusão, cancelamento, parcelamento na confiança, PIX e impressão/Salvar como PDF no layout A4 homologado
 - Estoque: produtos, fotos, saldos derivados, movimentações, compras, confirmação e cancelamento
 - Fornecedores: cadastro, edição, produtos fornecidos, histórico de compras e contas em aberto
-- Financeiro: contas a receber, contas a pagar, pagamentos parciais/integrais, vencidos automáticos e fluxo de caixa
-- Relatórios: faturamento anual, custos, financeiro e estoque
+- Financeiro: contas a receber/pagar agrupadas por compromisso, parcelas marcáveis como pagas, pagamentos parciais/integrais, prazo combinado e vencidos automáticos
+- Relatórios: abas de faturamento, custos, fluxo de caixa, receber, pagar e estoque, com CSV e impressão/Salvar como PDF
 - Configurações: empresa, PIX, regras operacionais, serviços, usuários e healthcheck
 
 ## Variável obrigatória no servidor
@@ -78,3 +78,20 @@ Foram executados na geração do pacote:
 - verificação de ausência de referências ANCAR no código fonte.
 
 O build completo com instalação de dependências não pôde ser executado no ambiente de geração porque o acesso ao registry npm estava indisponível (`EAI_AGAIN`). O EasyPanel deve executar `bun install` + `bun run build` no deploy e é o teste de build/runtime definitivo.
+
+
+## Novidades V1.1
+
+- O PIX permanece configurável em **Configurações**; nenhuma chave está hardcoded.
+- O orçamento abre um documento A4 isolado para impressão ou **Salvar como PDF**.
+- O QR Code é gerado localmente no frontend a partir do Pix Copia e Cola fornecido pelo PostgreSQL.
+- Contas a receber representam inclusive serviços feitos **na confiança** para clientes.
+- Contas a pagar aceitam fornecedor opcional e também despesas como aluguel, energia, frete, contador e serviços terceirizados.
+- Parcelamentos suportam dia fixo mensal, intervalo em dias e datas personalizadas.
+
+### Complemento V1.1 — primeiro teste operacional
+
+- Serviços podem ser lançados livremente no orçamento sem cadastro prévio no catálogo (requer o patch backend V1.1 fornecido junto da entrega).
+- O documento **Orçamento / Ordem de Serviço** segue a baseline A4 homologada e pode ser impresso ou salvo como PDF.
+- PIX fica opcional: sem chave cadastrada o documento continua funcionando; após configurar a chave em Configurações, o sistema exibe QR Code + Pix Copia e Cola automaticamente.
+- Contas a Receber e Contas a Pagar exibem parcelas individualmente, permitem baixas parciais e destacam atraso automaticamente.

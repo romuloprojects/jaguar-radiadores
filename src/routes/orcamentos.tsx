@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { FilePlus2, FileText, Search } from "lucide-react";
-import { useState } from "react";
+import { useDeferredValue, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { FilterBar, InternalPage, StatusPill } from "@/components/InternalPage";
 import { PageHeader } from "@/components/ui-helpers";
@@ -15,7 +15,8 @@ export const Route = createFileRoute("/orcamentos")({ component: QuotesPage });
 function QuotesPage() {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("");
-  const quotes = useQuery({ queryKey:["quotes",query,status], queryFn:()=>jaguarApi.quotes.list({search:query,status,limit:300}) });
+  const deferredQuery = useDeferredValue(query);
+  const quotes = useQuery({ queryKey:["quotes",deferredQuery,status], queryFn:()=>jaguarApi.quotes.list({search:deferredQuery,status,limit:300}), staleTime:15000 });
   const statuses = [{code:"",label:"Todos"},{code:"in_progress",label:"Em andamento"},{code:"completed",label:"Concluído"},{code:"cancelled",label:"Cancelado"}];
   return <InternalPage>
     <PageHeader title="Orçamentos / Atendimentos" subtitle="O orçamento acompanha o serviço até a conclusão; o financeiro é controlado separadamente." icon={FileText} right={<Button asChild><Link to="/orcamentos/novo"><FilePlus2 className="mr-2 h-4 w-4"/>Novo orçamento</Link></Button>} />

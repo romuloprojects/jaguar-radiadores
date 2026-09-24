@@ -1,0 +1,16 @@
+import fs from 'node:fs';
+const read=(p)=>fs.readFileSync(p,'utf8');
+const fail=(m)=>{throw new Error(m)};
+const pkg=JSON.parse(read('package.json'));
+if(!pkg.dependencies?.qrcode) fail('Dependência qrcode ausente');
+const quoteNew=read('src/routes/orcamentos_.novo.tsx');
+for(const t of ['Serviço livre / descrição manual','paymentTermsFromSchedule','Entrada já recebida agora','Datas livres']) if(!quoteNew.includes(t)) fail(`Novo orçamento sem: ${t}`);
+const quoteDetail=read('src/routes/orcamentos_.$orcamentoId.tsx');
+for(const t of ['QRCode.toDataURL','Imprimir / Salvar PDF','Copiar PIX','buildQuotePrintHtml']) if(!quoteDetail.includes(t)) fail(`Detalhe orçamento sem: ${t}`);
+const print=read('src/utils/quote-print.ts');
+for(const t of ['ORÇAMENTO / ORDEM DE SERVIÇO','SERVIÇOS E PEÇAS AUTORIZADOS','PIX ainda não configurado','AUTORIZAÇÃO']) if(!print.includes(t)) fail(`Documento orçamento sem: ${t}`);
+const finance=read('src/routes/financeiro.tsx');
+for(const t of ['A prazo','parcelas já pagas','Contas a Receber','Contas a Pagar']) if(!finance.toLowerCase().includes(t.toLowerCase())) fail(`Financeiro sem: ${t}`);
+const reports=read('src/routes/relatorios.tsx');
+for(const t of ['Faturamento','Custos','Fluxo de Caixa','A Receber','A Pagar','Estoque','Exportar CSV','Imprimir / Salvar PDF']) if(!reports.includes(t)) fail(`Relatórios sem: ${t}`);
+console.log('Jaguar V1.1 validation OK: orçamento livre + parcelamento + PIX/PDF + financeiro + relatórios.');

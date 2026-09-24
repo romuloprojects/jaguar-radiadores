@@ -34,3 +34,8 @@ O Vite está liberado explicitamente para esse host.
 `JAGUAR_N8N_WEBHOOK_BASE_URL` é variável **server-side** e não deve ser publicada como `VITE_*`. O navegador chama apenas `/api/jaguar/*`; o servidor TanStack adiciona o Bearer token armazenado em cookie HttpOnly ao chamar o n8n.
 
 Após publicar uma revisão, prefira redeploy limpo se houver artefatos de build anteriores.
+
+
+## V1.1
+
+Nenhuma variável de ambiente nova foi adicionada. O pacote inclui a dependência `qrcode`; como o `nixpacks.toml` usa `bun install` sem `--frozen-lockfile`, o EasyPanel atualizará o lockfile durante a instalação e fará o build normalmente.

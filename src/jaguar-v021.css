@@ -2279,3 +2279,37 @@ input {
 .quote-items-table td:last-child {
   width: 50px;
 }
+
+/* Jaguar V1.1 - impressão de relatórios */
+@media print {
+  body.print-report { background: #fff !important; color: #111 !important; }
+  body.print-report .jaguar-header,
+  body.print-report .report-print-hide,
+  body.print-report [data-sonner-toaster] { display: none !important; }
+  body.print-report .dashboard-main { max-width: none !important; padding: 0 !important; }
+  body.print-report .report-print-root .panel,
+  body.print-report .report-print-root .stat-card { box-shadow: none !important; break-inside: avoid; }
+  body.print-report .report-print-root { font-size: 10pt; }
+  body.print-report .report-print-root .data-table-wrap { overflow: visible !important; }
+}
+
+@media print {
+  body.print-report .report-print-root,
+  body.print-report .report-print-root .panel,
+  body.print-report .report-print-root .stat-card,
+  body.print-report .report-print-root .data-table-wrap,
+  body.print-report .report-print-root table,
+  body.print-report .report-print-root thead,
+  body.print-report .report-print-root tbody,
+  body.print-report .report-print-root tr,
+  body.print-report .report-print-root td,
+  body.print-report .report-print-root th {
+    background: #fff !important;
+    color: #111 !important;
+    border-color: #d7d7d7 !important;
+    box-shadow: none !important;
+    -webkit-print-color-adjust: economy;
+    print-color-adjust: economy;
+  }
+  body.print-report .report-print-root svg { max-height: 260px !important; }
+}
