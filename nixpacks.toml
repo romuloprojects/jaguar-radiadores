@@ -1,0 +1,11 @@
+# Jaguar Radiadores - EasyPanel/Nixpacks
+# TanStack Start is an SSR/server application. Do not serve it as a Vite SPA via Caddy.
+
+[phases.install]
+cmds = ["bun install --frozen-lockfile"]
+
+[phases.build]
+cmds = ["bun run build"]
+
+[start]
+cmd = "node .output/server/index.mjs"
