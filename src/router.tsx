@@ -5,7 +5,14 @@ import { routeTree } from "./routeTree.gen";
 export const getRouter = () => {
   const queryClient = new QueryClient({
     defaultOptions: {
-      queries: { staleTime: 15_000, retry: 1, refetchOnWindowFocus: true },
+      queries: {
+        staleTime: Infinity,
+        gcTime: 1000 * 60 * 60 * 12,
+        retry: 0,
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: false,
+        refetchOnMount: false,
+      },
       mutations: { retry: 0 },
     },
   });
@@ -14,7 +21,7 @@ export const getRouter = () => {
     routeTree,
     context: { queryClient },
     scrollRestoration: true,
-    defaultPreloadStaleTime: 0,
+    defaultPreloadStaleTime: 1000 * 60 * 5,
   });
 
   return router;

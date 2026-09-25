@@ -2,7 +2,7 @@ import fs from 'node:fs';
 const read=(p)=>fs.readFileSync(p,'utf8');
 const fail=(m)=>{throw new Error(m)};
 const pkg=JSON.parse(read('package.json'));
-if(pkg.version!=='1.2.0') fail(`Versão esperada 1.2.0, encontrada ${pkg.version}`);
+if(!/^1\.(2|3)\./.test(pkg.version)) fail(`Versão mínima esperada 1.2.x, encontrada ${pkg.version}`);
 
 const print=read('src/utils/quote-print.ts');
 if(!print.includes('<title>${line(d.number || q.number || "Orçamento")}</title>')) fail('Título do documento não está baseado somente no número da OS.');

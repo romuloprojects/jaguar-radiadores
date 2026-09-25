@@ -106,3 +106,9 @@ O build completo com instalação de dependências não pôde ser executado no a
 - Exclusões destrutivas são autorizadas somente para administradores pelo backend.
 - Recebimentos/pagamentos aparecem no histórico da parcela e podem ser excluídos para corrigir testes; o saldo e o fluxo de caixa são recalculados automaticamente.
 - Requer o patch backend V1.2 (`05` executado uma vez + `06` ativo).
+
+## V1.3 — cache e performance
+
+Esta versão remove atualização automática por foco/reconexão e o polling do healthcheck. As telas carregam dados ao entrar pela primeira vez e voltam a consultar o backend quando uma ação do usuário invalida os dados relacionados. A lista de Orçamentos também passou a filtrar busca/status localmente após a carga inicial.
+
+Para a melhor resposta da listagem de Orçamentos, aplique uma vez o workflow backend `07_JAGUAR_V1_3_PATCH_PERFORMANCE_ORCAMENTOS`.

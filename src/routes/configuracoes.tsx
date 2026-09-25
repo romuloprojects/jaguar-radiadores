@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { Building2, CheckCircle2, CreditCard, Database, Pencil, Plus, Save, Settings, SlidersHorizontal, UserCog, Wrench } from "lucide-react";
+import { Building2, CheckCircle2, CreditCard, Database, Pencil, Plus, RefreshCw, Save, Settings, SlidersHorizontal, UserCog, Wrench } from "lucide-react";
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { toast } from "sonner";
 import { InternalPage, SectionPanel, StatusPill } from "@/components/InternalPage";
@@ -23,7 +23,7 @@ const emptyCompany:CompanyForm={businessName:"Jaguar Radiadores",tradeName:"Jagu
 
 function SettingsPage(){
   const {session}=useAuth(); const isAdmin=String(session?.user.role||"").toLowerCase()==="admin"; const qc=useQueryClient();
-  const settings=useQuery({queryKey:["settings"],queryFn:jaguarApi.settings.get}); const services=useQuery({queryKey:["services"],queryFn:()=>jaguarApi.catalog.services()}); const health=useQuery({queryKey:["health"],queryFn:jaguarApi.health,refetchInterval:60000}); const users=useQuery({queryKey:["users"],queryFn:jaguarApi.settings.users,enabled:isAdmin});
+  const settings=useQuery({queryKey:["settings"],queryFn:jaguarApi.settings.get}); const services=useQuery({queryKey:["services"],queryFn:()=>jaguarApi.catalog.services()}); const health=useQuery({queryKey:["health"],queryFn:jaguarApi.health}); const users=useQuery({queryKey:["users"],queryFn:jaguarApi.settings.users,enabled:isAdmin});
   const [form,setForm]=useState<CompanyForm>(emptyCompany);
   useEffect(()=>{if(settings.data?.company)setForm(fromCompany(settings.data.company))},[settings.data]);
   const save=useMutation({mutationFn:()=>jaguarApi.settings.save(form),onSuccess:async()=>{toast.success("Configurações salvas no PostgreSQL.");await qc.invalidateQueries({queryKey:["settings"]})},onError:e=>toast.error(e.message)});
@@ -42,7 +42,7 @@ function SettingsPage(){
       <SectionPanel title="Preferências operacionais" subtitle="Regras executadas no backend, não apenas na interface" icon={SlidersHorizontal}>
         <div className="settings-lines"><div><span><b>Reservar estoque ao criar atendimento</b><small>Peças do orçamento ficam indisponíveis para outro atendimento.</small></span><Switch checked={form.reserveStockOnQuote} onCheckedChange={v=>setForm({...form,reserveStockOnQuote:v})}/></div><div><span><b>Dar baixa na conclusão</b><small>Consome as reservas quando o atendimento é concluído.</small></span><Switch checked={form.consumeStockOnComplete} onCheckedChange={v=>setForm({...form,consumeStockOnComplete:v})}/></div><div><span><b>Autorização padrão</b><small>O status continua simples: em andamento, concluído ou cancelado.</small></span><select className="h-9 rounded-md border border-input bg-background px-3 text-sm" value={form.defaultAuthorizationMethod} onChange={e=>setForm({...form,defaultAuthorizationMethod:e.target.value})}><option value="verbal">Verbal</option><option value="whatsapp">WhatsApp</option><option value="signature">Assinatura</option><option value="other">Outro</option></select></div></div>
       </SectionPanel>
-      <SectionPanel title="Backend e banco" subtitle="Conectividade do frontend/server com n8n e PostgreSQL" icon={Database}>
+      <SectionPanel title="Backend e banco" subtitle="Conectividade do frontend/server com n8n e PostgreSQL" icon={Database} right={<Button size="sm" variant="outline" onClick={()=>void health.refetch()} disabled={health.isFetching}><RefreshCw className={`mr-2 h-4 w-4 ${health.isFetching?"animate-spin":""}`}/>{health.isFetching?"Verificando...":"Verificar agora"}</Button>}>
         <div className="record-card"><div><b>API Jaguar</b><span>{health.isLoading?"Verificando...":health.data?.ok?"Online e conectada":"Indisponível"}</span></div><StatusPill label={health.data?.ok?"Online":"Offline"} tone={health.data?.ok?"positive":"danger"}/></div>{health.data?.ok&&<div className="mt-3 grid gap-2 text-sm"><div className="money-line"><span>Database</span><b>{String((health.data as any).database||"—")}</b></div><div className="money-line"><span>Schema</span><b>{String((health.data as any).schema||"—")}</b></div><div className="money-line"><span>Versão schema</span><b>{String((health.data as any).schema_version||"—")}</b></div><div className="money-line"><span>PostgreSQL</span><b>{String((health.data as any).postgres_version||"—")}</b></div><div className="money-line"><span>Última resposta</span><b>{dateTimePt(String((health.data as any).time||""))}</b></div></div>}
       </SectionPanel>
       <SectionPanel title="Catálogo de serviços" subtitle="Serviços disponíveis ao montar um orçamento/atendimento" icon={Wrench}>

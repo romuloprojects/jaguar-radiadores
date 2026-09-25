@@ -43,7 +43,7 @@ function DashboardPage() {
 
   return (
     <InternalPage>
-      <PageHeader title="Visão Geral" subtitle="Indicadores calculados a partir do PostgreSQL em tempo real." right={<div className="period-chip"><CalendarDays className="h-4 w-4"/><span>Período</span><b>{datePt(data.period.from)} a {datePt(data.period.to)}</b></div>} />
+      <PageHeader title="Visão Geral" subtitle="Indicadores calculados a partir dos dados registrados no PostgreSQL." right={<div className="period-chip"><CalendarDays className="h-4 w-4"/><span>Período</span><b>{datePt(data.period.from)} a {datePt(data.period.to)}</b></div>} />
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard icon={Banknote} label="Faturamento do período" value={brl(asNumber(data.kpis.billed))} detail={`${data.kpis.completedInPeriod} atendimentos concluídos`} tone="red" />
         <KpiCard icon={CreditCard} label="A receber" value={brl(asNumber(data.kpis.receivableOpen))} detail={`${brl(asNumber(data.kpis.receivableOverdue))} vencidos`} tone="green" />

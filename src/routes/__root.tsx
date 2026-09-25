@@ -83,7 +83,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Jaguar Radiadores | Gestão Integrada" },
-      { name: "jaguar-ui-version", content: "1.0.0-api-real" },
+      { name: "jaguar-ui-version", content: "1.3.0-api-real" },
       {
         name: "description",
         content: "Gestão comercial, estoque e financeiro da Jaguar Radiadores.",

@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Check, ChevronLeft, ChevronRight, CircleDollarSign, FileText, PackagePlus, Plus, Search, Trash2, UserRound, Wrench } from "lucide-react";
 import { useMemo, useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { InternalPage, StatusPill } from "@/components/InternalPage";
 import { PageHeader } from "@/components/ui-helpers";
@@ -22,9 +22,10 @@ function today(){ return new Date().toISOString().slice(0,10); }
 function nextMonth15(){ const d=new Date(); d.setMonth(d.getMonth()+1); d.setDate(15); return d.toISOString().slice(0,10); }
 
 function NewQuotePage(){
+  const qc=useQueryClient();
   const navigate=useNavigate();
-  const clientsQ=useQuery({queryKey:["clients","quote"],queryFn:()=>jaguarApi.clients.list({limit:200}),staleTime:30000});
-  const catalogQ=useQuery({queryKey:["catalog"],queryFn:()=>jaguarApi.catalog.all(),staleTime:60000});
+  const clientsQ=useQuery({queryKey:["clients","quote"],queryFn:()=>jaguarApi.clients.list({limit:200})});
+  const catalogQ=useQuery({queryKey:["catalog"],queryFn:()=>jaguarApi.catalog.all()});
   const [step,setStep]=useState(0); const [customerSearch,setCustomerSearch]=useState("");
   const clients=clientsQ.data?.items??[]; const catalog=catalogQ.data;
   const [customerId,setCustomerId]=useState("");
@@ -40,7 +41,12 @@ function NewQuotePage(){
   const filteredClients=clients.filter(c=>`${c.name} ${c.phone??""} ${c.document??""}`.toLowerCase().includes(customerSearch.toLowerCase())).slice(0,8);
   const schedule=useMemo(()=>payment==="credit_agreement"?buildSchedule({total,entryAmount,installmentsCount,firstDueDate,dueDay,mode:scheduleMode,intervalDays,custom:customSchedule,entryDueDate:today()}):buildSchedule({total,entryAmount:0,installmentsCount:1,firstDueDate:today(),dueDay:new Date().getDate(),mode:"monthly"}),[payment,total,entryAmount,installmentsCount,firstDueDate,dueDay,scheduleMode,intervalDays,customSchedule]);
   const paymentTerms=useMemo(()=>payment==="credit_agreement"?paymentTermsFromSchedule({methodCode:payment,mode:scheduleMode,entryAmount,entryDueDate:today(),installmentsCount,firstDueDate,dueDay,intervalDays,custom:customSchedule,total}):{methodCode:payment,installmentsCount:1,firstDueDate:today(),dueDay:new Date().getDate()},[payment,scheduleMode,entryAmount,installmentsCount,firstDueDate,dueDay,intervalDays,customSchedule,total]);
-  const create=useMutation({mutationFn:()=>jaguarApi.quotes.create({customerId:effectiveCustomerId,vehicleId:vehicle?.id||null,issueReported:notes,authorizationMethod:approval,items:items.map((i,index)=>({typeCode:i.typeCode,productId:i.productId,serviceId:i.serviceId,description:i.description,quantity:i.quantity,unitPrice:i.unitPrice,reserveStock:i.typeCode==="product"?i.reserveStock!==false:false,sortOrder:index})),discountType:discount>0?"amount":"none",discountValue:discount,paymentTerms,notes}),onSuccess:async(r)=>{toast.success("Orçamento/atendimento criado.");if(receivedNow){const target=r.quote.receivables?.[0];if(target&&asNumber(target.balance)>0){try{await jaguarApi.finance.receive({receivableId:target.id,amount:payment==="credit_agreement"&&entryAmount>0?Math.min(entryAmount,asNumber(target.balance)):asNumber(target.balance),paymentDate:today(),paymentMethodCode:receivedMethod});toast.success(payment==="credit_agreement"&&entryAmount>0?"Entrada registrada como recebida.":"Pagamento registrado como recebido.");}catch(e:any){toast.error(`Orçamento criado, mas o recebimento não foi registrado: ${e.message}`);}}}await navigate({to:"/orcamentos/$orcamentoId",params:{orcamentoId:r.quote.id}});},onError:e=>toast.error(e.message)});
+  const create=useMutation({mutationFn:()=>jaguarApi.quotes.create({customerId:effectiveCustomerId,vehicleId:vehicle?.id||null,issueReported:notes,authorizationMethod:approval,items:items.map((i,index)=>({typeCode:i.typeCode,productId:i.productId,serviceId:i.serviceId,description:i.description,quantity:i.quantity,unitPrice:i.unitPrice,reserveStock:i.typeCode==="product"?i.reserveStock!==false:false,sortOrder:index})),discountType:discount>0?"amount":"none",discountValue:discount,paymentTerms,notes}),onSuccess:async(r)=>{toast.success("Orçamento/atendimento criado.");if(receivedNow){const target=r.quote.receivables?.[0];if(target&&asNumber(target.balance)>0){try{await jaguarApi.finance.receive({receivableId:target.id,amount:payment==="credit_agreement"&&entryAmount>0?Math.min(entryAmount,asNumber(target.balance)):asNumber(target.balance),paymentDate:today(),paymentMethodCode:receivedMethod});toast.success(payment==="credit_agreement"&&entryAmount>0?"Entrada registrada como recebida.":"Pagamento registrado como recebido.");}catch(e:any){toast.error(`Orçamento criado, mas o recebimento não foi registrado: ${e.message}`);}}}await Promise.all([
+    qc.invalidateQueries({queryKey:["quotes"]}),
+    qc.invalidateQueries({queryKey:["dashboard"]}),
+    qc.invalidateQueries({queryKey:["finance"]}),
+    qc.invalidateQueries({queryKey:["reports"]}),
+  ]);await navigate({to:"/orcamentos/$orcamentoId",params:{orcamentoId:r.quote.id}});},onError:e=>toast.error(e.message)});
   function prepareCustomSchedule(){const remaining=Math.max(0,total-entryAmount);const amounts=splitAmounts(remaining,Math.max(1,installmentsCount));const base=buildSchedule({total,entryAmount,installmentsCount,firstDueDate,dueDay,mode:"monthly",entryDueDate:today()}).installments;setCustomSchedule(base.map((x,i)=>({number:i+1,dueDate:x.dueDate,amount:amounts[i]??0})));setScheduleMode("custom");}
   function addService(){setItems(l=>[...l,{id:crypto.randomUUID(),typeCode:"service",description:"Serviço",quantity:1,unitPrice:0}]);}
   function addPart(){if(catalogQ.isLoading)return toast.info("O catálogo ainda está carregando.");const p=catalog?.products[0]; if(!p)return toast.error("Cadastre ao menos um produto no estoque."); setItems(l=>[...l,{id:crypto.randomUUID(),typeCode:"product",productId:p.id,description:p.description,quantity:1,unitPrice:asNumber(p.salePrice),stockAvailable:asNumber(p.available),reserveStock:true}]);}

@@ -30,10 +30,10 @@ function toGroup<T extends ReceivableApi|PayableApi>(key:string,list:T[],title:s
 
 function FinancePage(){
   const qc=useQueryClient(); const period=useMemo(range,[]); const [search,setSearch]=useState(""); const [status,setStatus]=useState("");
-  const receivables=useQuery({queryKey:["receivables",search,status],queryFn:()=>jaguarApi.finance.receivables({search:search||undefined,status:status||undefined,limit:500}),staleTime:15000});
-  const payables=useQuery({queryKey:["payables",search,status],queryFn:()=>jaguarApi.finance.payables({search:search||undefined,status:status||undefined,limit:500}),staleTime:15000});
-  const cash=useQuery({queryKey:["cashflow",period.from,period.to],queryFn:()=>jaguarApi.finance.cashFlow(period),staleTime:15000});
-  const settings=useQuery({queryKey:["settings"],queryFn:jaguarApi.settings.get,staleTime:60000});
+  const receivables=useQuery({queryKey:["receivables",search,status],queryFn:()=>jaguarApi.finance.receivables({search:search||undefined,status:status||undefined,limit:500})});
+  const payables=useQuery({queryKey:["payables",search,status],queryFn:()=>jaguarApi.finance.payables({search:search||undefined,status:status||undefined,limit:500})});
+  const cash=useQuery({queryKey:["cashflow",period.from,period.to],queryFn:()=>jaguarApi.finance.cashFlow(period)});
+  const settings=useQuery({queryKey:["settings"],queryFn:jaguarApi.settings.get});
   const rItems=receivables.data?.items??[]; const pItems=payables.data?.items??[];
   const rGroups=useMemo(()=>groupReceivables(rItems),[rItems]); const pGroups=useMemo(()=>groupPayables(pItems),[pItems]);
   const totalReceivable=asNumber(receivables.data?.summary?.open); const overdueReceivable=asNumber(receivables.data?.summary?.overdue); const totalPayable=asNumber(payables.data?.summary?.open); const overduePayable=asNumber(payables.data?.summary?.overdue);

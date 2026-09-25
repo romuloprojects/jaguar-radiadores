@@ -19,13 +19,13 @@ type ReportTab="billing"|"costs"|"cash"|"receivables"|"payables"|"stock";
 
 export function ReportsPage(){
   const [year,setYear]=useState(new Date().getFullYear()); const [tab,setTab]=useState<ReportTab>("billing"); const period=useMemo(()=>periodForYear(year),[year]);
-  const annual=useQuery({queryKey:["reports","annual",year],queryFn:()=>jaguarApi.reports.annual(year),staleTime:30000});
-  const costs=useQuery({queryKey:["reports","costs",period.from,period.to],queryFn:()=>jaguarApi.reports.costs(period),staleTime:30000});
-  const finance=useQuery({queryKey:["reports","finance",period.from,period.to],queryFn:()=>jaguarApi.reports.finance(period),staleTime:30000});
-  const stock=useQuery({queryKey:["reports","stock"],queryFn:jaguarApi.reports.stock,staleTime:30000});
-  const receivables=useQuery({queryKey:["reports","receivables",period.from,period.to],queryFn:()=>jaguarApi.finance.receivables({...period,limit:500}),staleTime:30000});
-  const payables=useQuery({queryKey:["reports","payables",period.from,period.to],queryFn:()=>jaguarApi.finance.payables({...period,limit:500}),staleTime:30000});
-  const quotes=useQuery({queryKey:["reports","quotes",period.from,period.to],queryFn:()=>jaguarApi.quotes.list({...period,limit:500}),staleTime:30000});
+  const annual=useQuery({queryKey:["reports","annual",year],queryFn:()=>jaguarApi.reports.annual(year)});
+  const costs=useQuery({queryKey:["reports","costs",period.from,period.to],queryFn:()=>jaguarApi.reports.costs(period)});
+  const finance=useQuery({queryKey:["reports","finance",period.from,period.to],queryFn:()=>jaguarApi.reports.finance(period)});
+  const stock=useQuery({queryKey:["reports","stock"],queryFn:jaguarApi.reports.stock});
+  const receivables=useQuery({queryKey:["reports","receivables",period.from,period.to],queryFn:()=>jaguarApi.finance.receivables({...period,limit:500})});
+  const payables=useQuery({queryKey:["reports","payables",period.from,period.to],queryFn:()=>jaguarApi.finance.payables({...period,limit:500})});
+  const quotes=useQuery({queryKey:["reports","quotes",period.from,period.to],queryFn:()=>jaguarApi.quotes.list({...period,limit:500})});
   const chart=(annual.data?.months??[]).map(x=>({month:months[x.month-1]??String(x.month),current:asNumber(x.current),previous:asNumber(x.previous)}));
   const billed=asNumber(annual.data?.totals.current); const previous=asNumber(annual.data?.totals.previous); const partsCost=asNumber(costs.data?.partsCost); const operating=asNumber(costs.data?.operatingExpenses); const totalCosts=partsCost+operating; const result=billed-totalCosts; const growth=previous?((billed-previous)/previous)*100:0;
   const categoryData=(costs.data?.byCategory??[]).map((x,i)=>({...x,amount:asNumber(x.amount),color:["var(--accent-red)","var(--accent-orange)","var(--accent-graphite)","var(--accent-green)"][i%4]}));
