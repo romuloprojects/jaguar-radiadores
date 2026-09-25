@@ -43,7 +43,7 @@ export function DeleteAction({
     try {
       await onDelete();
       toast.success("Registro excluído.");
-      await onDone?.();
+      onDone?.();
     } catch (error: any) {
       toast.error(error?.message || "Não foi possível excluir o registro.");
     } finally {

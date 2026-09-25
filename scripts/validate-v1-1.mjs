@@ -12,5 +12,5 @@ for(const t of ['ORÇAMENTO / ORDEM DE SERVIÇO','SERVIÇOS E PEÇAS AUTORIZADOS
 const finance=read('src/routes/financeiro.tsx');
 for(const t of ['A prazo','parcelas já pagas','Contas a Receber','Contas a Pagar']) if(!finance.toLowerCase().includes(t.toLowerCase())) fail(`Financeiro sem: ${t}`);
 const reports=read('src/routes/relatorios.tsx');
-for(const t of ['Faturamento','Custos','Fluxo de Caixa','A Receber','A Pagar','Estoque','Exportar CSV','Imprimir / Salvar PDF']) if(!reports.includes(t)) fail(`Relatórios sem: ${t}`);
+for(const t of ['RELATÓRIOS MENSAIS','RELATÓRIOS ANUAIS','Visualizar','PDF','CSV','jaguarApi.reports.periods','jaguarApi.reports.snapshot']) if(!reports.includes(t)) fail(`Relatórios sem: ${t}`);
 console.log('Jaguar V1.1 validation OK: orçamento livre + parcelamento + PIX/PDF + financeiro + relatórios.');

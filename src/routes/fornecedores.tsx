@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { jaguarApi } from "@/services/jaguarApi";
+import { removeItemFromCachedLists, silentInvalidate } from "@/utils/query-sync";
 import type { SupplierDetailApi, SupplierListItemApi } from "@/types/api";
 import { asNumber, datePt } from "@/utils/api-format";
 import { brl } from "@/utils/format";
@@ -19,8 +20,8 @@ export const Route = createFileRoute("/fornecedores")({ component: SuppliersPage
 
 function SuppliersPage() {
   const [query,setQuery]=useState("");
-  const list=useQuery({queryKey:["suppliers",query],queryFn:()=>jaguarApi.suppliers.list({search:query||undefined,limit:200})});
-  const suppliers=list.data?.items??[];
+  const list=useQuery({queryKey:["suppliers"],queryFn:()=>jaguarApi.suppliers.list({limit:500})});
+  const suppliers=useMemo(()=>{const needle=query.trim().toLocaleLowerCase("pt-BR");return (list.data?.items??[]).filter(s=>!needle||[s.name,s.document,s.phone,s.contact,s.city].filter(Boolean).some(v=>String(v).toLocaleLowerCase("pt-BR").includes(needle)));},[list.data,query]);
   const [selectedId,setSelectedId]=useState("");
   useEffect(()=>{if(!selectedId&&suppliers[0])setSelectedId(suppliers[0].id);if(selectedId&&suppliers.length&&!suppliers.some(s=>s.id===selectedId))setSelectedId(suppliers[0].id)},[suppliers,selectedId]);
   const detail=useQuery({queryKey:["supplier",selectedId],queryFn:()=>jaguarApi.suppliers.detail(selectedId),enabled:!!selectedId});
@@ -30,7 +31,7 @@ function SuppliersPage() {
   const purchasesYtd=suppliers.reduce((s,x)=>s+asNumber(x.purchasesYtd),0);
   const history=useMemo(()=>monthlyHistory(selected),[selected]);
   const qc=useQueryClient();
-  async function refresh(){await Promise.all([qc.invalidateQueries({queryKey:["suppliers"]}),qc.invalidateQueries({queryKey:["supplier"]}),qc.invalidateQueries({queryKey:["purchases"]})]);}
+  function refresh(){silentInvalidate(qc,[["suppliers"],["supplier"],["purchases"]]);}
   return <InternalPage>
     <PageHeader title="Fornecedores" subtitle="Parceiros, produtos fornecidos, compras e pendências financeiras em dados reais." right={<SupplierDialog onDone={refresh}/>}/>
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -49,7 +50,7 @@ function SuppliersPage() {
       </div>
       <aside className="panel supplier-detail-panel">
         {!selected?<div className="py-16 text-center text-sm text-muted-foreground">Selecione um fornecedor para visualizar os detalhes.</div>:<>
-          <div className="supplier-detail-panel__header"><div className="supplier-monogram">{initials(selected.name)}</div><div className="min-w-0"><div className="flex items-center gap-2"><h2>{selected.name}</h2><StatusPill label="Ativo" tone="positive"/></div><p>{selected.document||"Documento não informado"}</p></div><div className="flex items-center gap-1"><SupplierDialog supplier={selected} onDone={refresh}/><DeleteAction iconOnly title={`Excluir ${selected.name}?`} description="O fornecedor será removido. Se houver compras vinculadas, exclua essas compras primeiro para preservar a integridade financeira e do estoque." onDelete={()=>jaguarApi.remove("supplier",selected.id)} onDone={async()=>{setSelectedId("");await refresh();}}/></div></div>
+          <div className="supplier-detail-panel__header"><div className="supplier-monogram">{initials(selected.name)}</div><div className="min-w-0"><div className="flex items-center gap-2"><h2>{selected.name}</h2><StatusPill label="Ativo" tone="positive"/></div><p>{selected.document||"Documento não informado"}</p></div><div className="flex items-center gap-1"><SupplierDialog supplier={selected} onDone={refresh}/><DeleteAction iconOnly title={`Excluir ${selected.name}?`} description="O fornecedor será removido. Se houver compras vinculadas, exclua essas compras primeiro para preservar a integridade financeira e do estoque." onDelete={async()=>{await jaguarApi.remove("supplier",selected.id);removeItemFromCachedLists(qc,["suppliers"],selected.id);qc.removeQueries({queryKey:["supplier",selected.id]});}} onDone={()=>{setSelectedId("");refresh();}}/></div></div>
           <div className="supplier-detail-tabs"><button className="is-active">Visão Geral</button><button>Produtos</button><button>Compras</button><button>Financeiro</button></div>
           <div className="grid gap-3">
             <section className="detail-section"><h3>Dados do fornecedor</h3><div className="detail-line"><Building2/><span>{selected.legalName||selected.name}</span></div><div className="detail-line"><Phone/><span>{selected.phone||selected.whatsapp||"—"}</span></div>{selected.email&&<div className="detail-line"><Mail/><span>{selected.email}</span></div>}<div className="detail-line"><MapPin/><span>{[selected.street,selected.number,selected.city,selected.state].filter(Boolean).join(" • ")||"—"}</span></div><div className="detail-line"><Truck/><span>Contato: {selected.contact||"—"}</span></div></section>

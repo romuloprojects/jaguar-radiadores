@@ -27,6 +27,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { jaguarApi } from "@/services/jaguarApi";
+import { removeItemFromCachedLists, silentInvalidate } from "@/utils/query-sync";
 import type { ProductApi, PurchaseListItemApi } from "@/types/api";
 import { asNumber, datePt, dateTimePt } from "@/utils/api-format";
 import { brl } from "@/utils/format";
@@ -48,10 +49,18 @@ function InventoryPage() {
   const qc = useQueryClient();
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("");
-  const productsQuery = useQuery({ queryKey: ["products", query, status], queryFn: () => jaguarApi.catalog.products({ search: query || undefined, status: status || undefined, limit: 300 }) });
+  const productsQuery = useQuery({ queryKey: ["products"], queryFn: () => jaguarApi.catalog.products({ limit: 500 }) });
   const movementsQuery = useQuery({ queryKey: ["stock-movements"], queryFn: () => jaguarApi.stock.movements({ limit: 12 }) });
   const purchasesQuery = useQuery({ queryKey: ["purchases"], queryFn: () => jaguarApi.purchases.list({ limit: 30 }) });
-  const products = productsQuery.data?.items ?? [];
+  const allProducts = productsQuery.data?.items ?? [];
+  const products = useMemo(() => {
+    const needle = query.trim().toLocaleLowerCase("pt-BR");
+    return allProducts.filter((item) => {
+      if (status && item.statusCode !== status) return false;
+      if (!needle) return true;
+      return [item.code,item.description,item.brand,item.category,item.supplier].filter(Boolean).some((value)=>String(value).toLocaleLowerCase("pt-BR").includes(needle));
+    });
+  }, [allProducts, query, status]);
   const movements = movementsQuery.data?.items ?? [];
   const purchases = purchasesQuery.data?.items ?? [];
   const inventoryValue = products.reduce((s, i) => s + asNumber(i.current) * asNumber(i.unitCost), 0);
@@ -64,13 +73,8 @@ function InventoryPage() {
     { name: "Baixo", value: lowCount, color: "var(--accent-orange)" },
     { name: "Crítico", value: criticalCount, color: "var(--accent-red)" },
   ];
-  async function refresh() {
-    await Promise.all([
-      qc.invalidateQueries({ queryKey: ["products"] }),
-      qc.invalidateQueries({ queryKey: ["stock-movements"] }),
-      qc.invalidateQueries({ queryKey: ["purchases"] }),
-      qc.invalidateQueries({ queryKey: ["dashboard"] }),
-    ]);
+  function refresh() {
+    silentInvalidate(qc, [["products"], ["stock-movements"], ["purchases"], ["dashboard"], ["reports"]]);
   }
 
   return (
@@ -78,7 +82,7 @@ function InventoryPage() {
       <PageHeader
         title="Estoque"
         subtitle="Produtos, saldo físico, reservas, compras e movimentações reais do PostgreSQL Jaguar."
-        right={<div className="flex flex-wrap gap-2"><StockMovementDialog products={products} onDone={refresh}/><PurchaseDialog onDone={refresh}/><ProductDialog onDone={refresh}/></div>}
+        right={<div className="flex flex-wrap gap-2"><StockMovementDialog products={allProducts} onDone={refresh}/><PurchaseDialog onDone={refresh}/><ProductDialog onDone={refresh}/></div>}
       />
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Itens cadastrados" value={productsQuery.data?.total ?? products.length} icon={Boxes} accent="red" detail="Catálogo ativo" />
@@ -109,7 +113,7 @@ function InventoryPage() {
                   <td className={asNumber(item.available)<=asNumber(item.minimum)?"font-bold text-[var(--accent-red)]":"font-bold text-[var(--accent-green)]"}>{asNumber(item.available)}</td>
                   <td>{brl(asNumber(item.unitCost))}</td><td>{brl(asNumber(item.salePrice))}</td>
                   <td><StatusPill label={item.status} tone={item.status==="Normal"?"positive":item.status==="Baixo"?"warning":"danger"}/></td>
-                  <td><div className="flex items-center gap-1"><ProductDialog product={item} onDone={refresh}/><DeleteAction iconOnly title={`Excluir ${item.description}?`} description="O produto será removido do catálogo. Se houver compras vinculadas a ele, exclua essas compras primeiro. Orçamentos históricos preservam a descrição e os valores gravados." onDelete={()=>jaguarApi.remove("product",item.id)} onDone={refresh}/></div></td>
+                  <td><div className="flex items-center gap-1"><ProductDialog product={item} onDone={refresh}/><DeleteAction iconOnly title={`Excluir ${item.description}?`} description="O produto será removido do catálogo. Se houver compras vinculadas a ele, exclua essas compras primeiro. Orçamentos históricos preservam a descrição e os valores gravados." onDelete={async()=>{await jaguarApi.remove("product",item.id);removeItemFromCachedLists(qc,["products"],item.id);}} onDone={refresh}/></div></td>
                 </tr>)}
                 {!productsQuery.isLoading && products.length===0 && <tr><td colSpan={11} className="py-10 text-center text-muted-foreground">Nenhum produto cadastrado.</td></tr>}
               </tbody>
@@ -122,9 +126,9 @@ function InventoryPage() {
               <div className="inventory-legend">{distribution.map((entry)=><div key={entry.name}><i style={{background:entry.color}}/><span>{entry.name}</span><b>{entry.value}</b></div>)}</div>
             </section>
             <section className="panel inventory-side-card">
-              <div className="flex items-center justify-between"><h2>Movimentações recentes</h2><StockMovementDialog products={products} onDone={refresh} compact/></div>
+              <div className="flex items-center justify-between"><h2>Movimentações recentes</h2><StockMovementDialog products={allProducts} onDone={refresh} compact/></div>
               <div className="mt-3 space-y-1">{movements.map((move)=>{
-                const positive=asNumber(move.quantity)>=0; const manual=!move.purchaseId&&!move.quoteId; return <div className="stock-move" key={move.id}><span className={positive?"positive":"negative"}>{positive?<ArrowDown/>:<ArrowUp/>}</span><div><b>{movementLabels[move.type] || move.type}</b><small>{move.code?`${move.code} • `:""}{move.product}</small></div><div className="flex items-center gap-2 text-right"><div><b>{positive?"+":""}{asNumber(move.quantity)} un.</b><small>{dateTimePt(move.createdAt)}</small></div>{manual&&<DeleteAction iconOnly title="Excluir movimentação manual?" description="O lançamento será removido e o saldo físico será recalculado a partir do histórico restante." onDelete={()=>jaguarApi.remove("stock_movement",move.id)} onDone={refresh}/>}</div></div>;
+                const positive=asNumber(move.quantity)>=0; const manual=!move.purchaseId&&!move.quoteId; return <div className="stock-move" key={move.id}><span className={positive?"positive":"negative"}>{positive?<ArrowDown/>:<ArrowUp/>}</span><div><b>{movementLabels[move.type] || move.type}</b><small>{move.code?`${move.code} • `:""}{move.product}</small></div><div className="flex items-center gap-2 text-right"><div><b>{positive?"+":""}{asNumber(move.quantity)} un.</b><small>{dateTimePt(move.createdAt)}</small></div>{manual&&<DeleteAction iconOnly title="Excluir movimentação manual?" description="O lançamento será removido e o saldo físico será recalculado a partir do histórico restante." onDelete={async()=>{await jaguarApi.remove("stock_movement",move.id);removeItemFromCachedLists(qc,["stock-movements"],move.id);}} onDone={refresh}/>}</div></div>;
               })}{!movementsQuery.isLoading && movements.length===0 && <p className="py-8 text-center text-sm text-muted-foreground">Sem movimentações ainda.</p>}</div>
             </section>
           </aside>

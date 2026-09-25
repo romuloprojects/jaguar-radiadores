@@ -1,0 +1,12 @@
+import fs from "node:fs";
+const read=(p)=>fs.readFileSync(p,"utf8");
+const fail=(m)=>{throw new Error(m)};
+const reports=read("src/routes/relatorios.tsx");
+const print=read("src/utils/report-print.ts");
+const api=read("src/services/jaguarApi.ts");
+const types=read("src/types/api.ts");
+for(const token of ["Últimos 6 meses com dados","RELATÓRIOS ANUAIS","jaguarApi.reports.periods","jaguarApi.reports.snapshot","buildManagementReportHtml","Visualizar","PDF","CSV"]) if(!reports.includes(token)) fail(`Relatórios V1.6 sem requisito: ${token}`);
+for(const token of ["RELATÓRIO GERENCIAL MENSAL","DEMONSTRATIVO DE FATURAMENTO","CUSTOS E RESULTADO","FLUXO DE CAIXA","CONTAS A RECEBER","CONTAS A PAGAR","ESTOQUE","ATENDIMENTOS / OS"]) if(!print.includes(token)) fail(`Documento gerencial sem seção: ${token}`);
+for(const token of ["reports/periods","reports/snapshot"]) if(!api.includes(token)) fail(`Wrapper ausente: ${token}`);
+for(const token of ["ReportPeriodsApi","ReportSnapshotApi"]) if(!types.includes(token)) fail(`Tipo ausente: ${token}`);
+console.log("Jaguar V1.6 validation OK: central de relatórios mensais/anuais + documento gerencial em 8 seções.");

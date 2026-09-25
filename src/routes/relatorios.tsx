@@ -1,64 +1,118 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { BarChart3, CalendarRange, Download, FileBarChart, Printer, ReceiptText, WalletCards } from "lucide-react";
+import { Archive, CalendarDays, CalendarRange, Download, Eye, FileBarChart, FileDown, Loader2 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { Area, CartesianGrid, Cell, ComposedChart, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { InternalPage, StatCard, StatusPill, chartTooltipStyle } from "@/components/InternalPage";
+import { toast } from "sonner";
+import { InternalPage } from "@/components/InternalPage";
 import { PageHeader } from "@/components/ui-helpers";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { jaguarApi } from "@/services/jaguarApi";
-import { asNumber, datePt, paymentStatusLabel, statusToneForPayment } from "@/utils/api-format";
+import type { ReportPeriodItemApi } from "@/types/api";
+import { buildManagementReportHtml, type ManagementReportBundle, type ManagementReportMeta } from "@/utils/report-print";
+import { asNumber, datePt } from "@/utils/api-format";
 import { brl } from "@/utils/format";
 
 export const Route = createFileRoute("/relatorios")({ component: ReportsPage });
-const months=["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
-function periodForYear(year:number){const now=new Date();const to=year===now.getFullYear()?now:new Date(year,11,31);return {from:`${year}-01-01`,to:to.toISOString().slice(0,10)}}
 
-type ReportTab="billing"|"costs"|"cash"|"receivables"|"payables"|"stock";
+const MONTHS = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+
+function yearPeriod(year:number){
+  const now=new Date();
+  const current=year===now.getFullYear();
+  return {from:`${year}-01-01`,to:current?now.toISOString().slice(0,10):`${year}-12-31`,isCurrent:current};
+}
+function monthLabel(p:ReportPeriodItemApi){return `${MONTHS[p.month-1]} ${p.year}`}
 
 export function ReportsPage(){
-  const [year,setYear]=useState(new Date().getFullYear()); const [tab,setTab]=useState<ReportTab>("billing"); const period=useMemo(()=>periodForYear(year),[year]);
-  const annual=useQuery({queryKey:["reports","annual",year],queryFn:()=>jaguarApi.reports.annual(year)});
-  const costs=useQuery({queryKey:["reports","costs",period.from,period.to],queryFn:()=>jaguarApi.reports.costs(period)});
-  const finance=useQuery({queryKey:["reports","finance",period.from,period.to],queryFn:()=>jaguarApi.reports.finance(period)});
-  const stock=useQuery({queryKey:["reports","stock"],queryFn:jaguarApi.reports.stock});
-  const receivables=useQuery({queryKey:["reports","receivables",period.from,period.to],queryFn:()=>jaguarApi.finance.receivables({...period,limit:500})});
-  const payables=useQuery({queryKey:["reports","payables",period.from,period.to],queryFn:()=>jaguarApi.finance.payables({...period,limit:500})});
-  const quotes=useQuery({queryKey:["reports","quotes",period.from,period.to],queryFn:()=>jaguarApi.quotes.list({...period,limit:500})});
-  const chart=(annual.data?.months??[]).map(x=>({month:months[x.month-1]??String(x.month),current:asNumber(x.current),previous:asNumber(x.previous)}));
-  const billed=asNumber(annual.data?.totals.current); const previous=asNumber(annual.data?.totals.previous); const partsCost=asNumber(costs.data?.partsCost); const operating=asNumber(costs.data?.operatingExpenses); const totalCosts=partsCost+operating; const result=billed-totalCosts; const growth=previous?((billed-previous)/previous)*100:0;
-  const categoryData=(costs.data?.byCategory??[]).map((x,i)=>({...x,amount:asNumber(x.amount),color:["var(--accent-red)","var(--accent-orange)","var(--accent-graphite)","var(--accent-green)"][i%4]}));
-  function printReport(){document.body.classList.add("print-report");window.print();setTimeout(()=>document.body.classList.remove("print-report"),500)}
-  function exportCurrent(){
-    if(tab==="billing")return downloadCsv(`jaguar-faturamento-${year}.csv`,[["Mês",`Faturamento ${year}`,`Faturamento ${year-1}`],...chart.map(x=>[x.month,x.current,x.previous])]);
-    if(tab==="costs")return downloadCsv(`jaguar-custos-${year}.csv`,[["Indicador","Valor"],["Faturamento",billed],["Custo das peças consumidas",partsCost],["Despesas operacionais",operating],["Compras pagas",asNumber(costs.data?.purchasesPaid)],["Resultado operacional",result],[],["Categoria","Valor"],...(costs.data?.byCategory??[]).map(x=>[x.category,asNumber(x.amount)])]);
-    if(tab==="cash")return downloadCsv(`jaguar-fluxo-caixa-${year}.csv`,[["Data","Entradas","Saídas","Saldo do dia"],...(finance.data?.daily??[]).map(x=>[x.date,asNumber(x.inflow),asNumber(x.outflow),asNumber(x.net)])]);
-    if(tab==="receivables")return downloadCsv(`jaguar-contas-a-receber-${year}.csv`,[["Cliente","Referência","Parcela","Vencimento","Valor","Recebido","Saldo","Status"],...(receivables.data?.items??[]).map(x=>[x.customer??"",x.reference??"",`${x.installment??1}/${x.installmentCount??1}`,x.dueDate,asNumber(x.amount),asNumber(x.paid),asNumber(x.balance),paymentStatusLabel(x.status)])]);
-    if(tab==="payables")return downloadCsv(`jaguar-contas-a-pagar-${year}.csv`,[["Favorecido","Categoria","Referência","Parcela","Vencimento","Valor","Pago","Saldo","Status"],...(payables.data?.items??[]).map(x=>[x.supplier??"",x.category??"",x.reference??"",`${x.installment??1}/${x.installmentCount??1}`,x.dueDate,asNumber(x.amount),asNumber(x.paid),asNumber(x.balance),paymentStatusLabel(x.status)])]);
-    return downloadCsv(`jaguar-estoque-${year}.csv`,[["Código","Item","Físico","Reservado","Disponível","Custo médio","Valor estoque","Status"],...(stock.data?.items??[]).map(x=>[x.code??"",x.description,asNumber(x.physical),asNumber(x.reserved),asNumber(x.available),asNumber(x.averageCost),asNumber(x.stockValue),x.status])]);
+  const qc=useQueryClient();
+  const periods=useQuery({queryKey:["reports","periods",6],queryFn:()=>jaguarApi.reports.periods(6),staleTime:0,refetchOnMount:"always",refetchOnWindowFocus:false,refetchOnReconnect:false});
+  const [busy,setBusy]=useState<string|null>(null);
+  const months=periods.data?.months??[];
+  const years=periods.data?.years??[];
+  const latest=months[0];
+  const summary=useMemo(()=>({months:months.length,years:years.length,latest:latest?monthLabel(latest):"Nenhum período"}),[months,years,latest]);
+
+  async function loadBundle(meta:ManagementReportMeta):Promise<ManagementReportBundle>{
+    const range={from:meta.from,to:meta.to};
+    const [settings,annual,costs,finance,snapshot,quotes]=await Promise.all([
+      qc.fetchQuery({queryKey:["settings"],queryFn:jaguarApi.settings.get,staleTime:0}),
+      qc.fetchQuery({queryKey:["reports","annual",meta.year],queryFn:()=>jaguarApi.reports.annual(meta.year),staleTime:0}),
+      qc.fetchQuery({queryKey:["reports","costs",meta.from,meta.to],queryFn:()=>jaguarApi.reports.costs(range),staleTime:0}),
+      qc.fetchQuery({queryKey:["reports","finance",meta.from,meta.to],queryFn:()=>jaguarApi.reports.finance(range),staleTime:0}),
+      qc.fetchQuery({queryKey:["reports","snapshot",meta.from,meta.to],queryFn:()=>jaguarApi.reports.snapshot(range),staleTime:0}),
+      qc.fetchQuery({queryKey:["reports","quotes",meta.from,meta.to],queryFn:()=>jaguarApi.quotes.list({...range,limit:500}),staleTime:0}),
+    ]);
+    return {company:settings.company||{},annual,costs,finance,snapshot,quotes:quotes.items||[]};
   }
-  return <div className="report-print-root"><InternalPage>
-    <PageHeader title="Relatórios" subtitle="Faturamento, custos, fluxo, receber, pagar e estoque com dados reais do PostgreSQL." right={<div className="report-print-hide flex flex-wrap gap-2"><select className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={year} onChange={e=>setYear(Number(e.target.value))}>{[0,1,2,3,4].map(n=><option key={n} value={new Date().getFullYear()-n}>{new Date().getFullYear()-n}</option>)}</select><Button variant="outline" onClick={exportCurrent}><Download className="mr-2 h-4 w-4"/>Exportar CSV</Button><Button onClick={printReport}><Printer className="mr-2 h-4 w-4"/>Imprimir / Salvar PDF</Button></div>}/>
-    <aside className="report-kpis">
-      <StatCard label={`Faturamento (${year})`} value={brl(billed)} icon={ReceiptText} accent="red" detail={previous?`${growth>=0?"↑":"↓"} ${Math.abs(growth).toFixed(1)}% vs. ${year-1}`:"Sem base anterior"}/>
-      <StatCard label="Entradas realizadas" value={brl(asNumber(finance.data?.inflow))} icon={WalletCards} accent="green" detail="Caixa efetivamente recebido"/>
-      <StatCard label="Custos + despesas" value={brl(totalCosts)} icon={FileBarChart} accent="orange" detail={`${brl(partsCost)} em peças consumidas`}/>
-      <StatCard label="Resultado operacional" value={brl(result)} icon={BarChart3} accent="graphite" detail="Faturamento - custos diretos - despesas"/>
-    </aside>
-    <Tabs value={tab} onValueChange={v=>setTab(v as ReportTab)} className="space-y-4">
-      <TabsList className="report-print-hide flex h-auto flex-wrap"><TabsTrigger value="billing">Faturamento</TabsTrigger><TabsTrigger value="costs">Custos</TabsTrigger><TabsTrigger value="cash">Fluxo de Caixa</TabsTrigger><TabsTrigger value="receivables">A Receber</TabsTrigger><TabsTrigger value="payables">A Pagar</TabsTrigger><TabsTrigger value="stock">Estoque</TabsTrigger></TabsList>
-      <TabsContent value="billing" className="space-y-4"><section className="panel annual-report-card"><div className="annual-report-card__header"><div><span>FATURAMENTO</span><h2>Demonstrativo de Faturamento Anual</h2><p>Comparativo mensal — {year} × {year-1}</p></div><div className="chart-legend-inline"><span><i className="expense"/>{year}</span><span><i className="balance"/>{year-1}</span></div></div><div className="h-[300px]"><ResponsiveContainer width="100%" height="100%"><ComposedChart data={chart} margin={{left:-4,right:12,top:20,bottom:0}}><CartesianGrid vertical={false} stroke="var(--chart-grid)"/><XAxis dataKey="month" tick={{fontSize:10,fill:"var(--muted-foreground)"}} axisLine={false} tickLine={false}/><YAxis tickFormatter={v=>`${v/1000}k`} tick={{fontSize:10,fill:"var(--muted-foreground)"}} axisLine={false} tickLine={false}/><Tooltip contentStyle={chartTooltipStyle} formatter={(v:number)=>brl(v)}/><Legend wrapperStyle={{fontSize:11}}/><Area dataKey="current" name={String(year)} stroke="var(--accent-red)" fill="var(--accent-red)" fillOpacity={.14} strokeWidth={2.5}/><Area dataKey="previous" name={String(year-1)} stroke="var(--chart-graphite-muted)" fill="var(--chart-graphite-muted)" fillOpacity={.06} strokeWidth={1.5}/></ComposedChart></ResponsiveContainer></div></section><section className="panel data-table-wrap"><table className="data-table min-w-[680px]"><thead><tr><th>Mês</th><th>Faturamento {year}</th><th>{year-1}</th><th>Variação</th></tr></thead><tbody>{chart.map(item=>{const variation=item.previous?((item.current-item.previous)/item.previous)*100:0;return <tr key={item.month}><td className="font-semibold">{item.month}</td><td>{brl(item.current)}</td><td>{brl(item.previous)}</td><td className={variation>=0?"text-[var(--accent-green)]":"text-[var(--accent-red)]"}>{item.previous?`${variation>=0?"+":""}${variation.toFixed(1)}%`:"—"}</td></tr>})}</tbody></table></section><section className="panel data-table-wrap"><div className="table-section-heading"><div><span>ATENDIMENTOS</span><h2>Orçamentos/atendimentos do período</h2></div></div><table className="data-table min-w-[800px]"><thead><tr><th>Nº</th><th>Data</th><th>Cliente</th><th>Veículo</th><th>Valor</th><th>Status</th></tr></thead><tbody>{(quotes.data?.items??[]).map(q=><tr key={q.id}><td>{q.number}</td><td>{datePt(q.date)}</td><td>{q.customerName}</td><td>{q.vehicle||"—"}</td><td>{brl(asNumber(q.total))}</td><td>{q.status}</td></tr>)}</tbody></table></section></TabsContent>
-      <TabsContent value="costs" className="space-y-4"><div className="grid gap-4 xl:grid-cols-[1fr_.8fr]"><section className="panel p-5"><h2 className="font-semibold">Resumo de custos</h2><div className="mt-4 space-y-2"><MoneyLine label="Faturamento" value={billed}/><MoneyLine label="Peças efetivamente consumidas" value={partsCost}/><MoneyLine label="Despesas operacionais" value={operating}/><MoneyLine label="Compras pagas" value={asNumber(costs.data?.purchasesPaid)}/><MoneyLine label="Resultado operacional" value={result} strong/></div><p className="mt-4 text-xs text-muted-foreground">Compra de estoque é mostrada separadamente do custo das peças efetivamente consumidas nos atendimentos.</p></section><section className="panel p-5"><h2 className="font-semibold">Despesas por categoria</h2><div className="h-[240px]"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={categoryData} dataKey="amount" nameKey="category" innerRadius={60} outerRadius={90}>{categoryData.map((e,i)=><Cell key={i} fill={e.color}/>)}</Pie><Tooltip contentStyle={chartTooltipStyle} formatter={(v:number)=>brl(v)}/></PieChart></ResponsiveContainer></div></section></div><section className="panel data-table-wrap"><table className="data-table min-w-[620px]"><thead><tr><th>Categoria</th><th className="text-right">Valor</th></tr></thead><tbody>{(costs.data?.byCategory??[]).map(x=><tr key={x.category}><td>{x.category}</td><td className="text-right font-semibold">{brl(asNumber(x.amount))}</td></tr>)}</tbody></table></section></TabsContent>
-      <TabsContent value="cash" className="space-y-4"><section className="panel p-5"><div className="grid gap-3 sm:grid-cols-3"><MoneyBox label="Entradas" value={asNumber(finance.data?.inflow)} tone="green"/><MoneyBox label="Saídas" value={asNumber(finance.data?.outflow)} tone="red"/><MoneyBox label="Resultado de caixa" value={asNumber(finance.data?.inflow)-asNumber(finance.data?.outflow)} tone="graphite"/></div></section><section className="panel data-table-wrap"><table className="data-table min-w-[700px]"><thead><tr><th>Data</th><th>Entradas</th><th>Saídas</th><th>Saldo do dia</th></tr></thead><tbody>{(finance.data?.daily??[]).map(x=><tr key={x.date}><td>{datePt(x.date)}</td><td className="text-[var(--accent-green)]">{brl(asNumber(x.inflow))}</td><td className="text-[var(--accent-red)]">{brl(asNumber(x.outflow))}</td><td className="font-semibold">{brl(asNumber(x.net))}</td></tr>)}</tbody></table></section></TabsContent>
-      <TabsContent value="receivables" className="space-y-4"><section className="panel p-5"><div className="grid gap-3 sm:grid-cols-3"><MoneyBox label="Saldo em aberto nas parcelas do período" value={(receivables.data?.items??[]).reduce((s,x)=>s+asNumber(x.balance),0)} tone="green"/><MoneyBox label="Vencido nas parcelas do período" value={(receivables.data?.items??[]).filter(x=>x.status==="overdue"||x.isOverdue).reduce((s,x)=>s+asNumber(x.balance),0)} tone="red"/><MoneyBox label="Já recebido nessas parcelas" value={(receivables.data?.items??[]).reduce((s,x)=>s+asNumber(x.paid),0)} tone="graphite"/></div></section><FinanceReportTable kind="receive" items={receivables.data?.items??[]}/></TabsContent>
-      <TabsContent value="payables" className="space-y-4"><section className="panel p-5"><div className="grid gap-3 sm:grid-cols-3"><MoneyBox label="Saldo em aberto nas parcelas do período" value={(payables.data?.items??[]).reduce((s,x)=>s+asNumber(x.balance),0)} tone="red"/><MoneyBox label="Vencido nas parcelas do período" value={(payables.data?.items??[]).filter(x=>x.status==="overdue"||x.isOverdue).reduce((s,x)=>s+asNumber(x.balance),0)} tone="red"/><MoneyBox label="Já pago nessas parcelas" value={(payables.data?.items??[]).reduce((s,x)=>s+asNumber(x.paid),0)} tone="graphite"/></div></section><FinanceReportTable kind="pay" items={payables.data?.items??[]}/></TabsContent>
-      <TabsContent value="stock" className="space-y-4"><section className="panel p-5"><div className="grid gap-3 sm:grid-cols-4"><MoneyBox label="Estoque físico" value={asNumber(stock.data?.physicalValue)} tone="graphite"/><MoneyBox label="Estoque disponível" value={asNumber(stock.data?.availableValue)} tone="green"/><MoneyBox label="Itens críticos" value={stock.data?.criticalCount??0} tone="red" money={false}/><MoneyBox label="Estoque baixo" value={stock.data?.lowCount??0} tone="orange" money={false}/></div></section><section className="panel data-table-wrap"><table className="data-table min-w-[900px]"><thead><tr><th>Código</th><th>Item</th><th>Físico</th><th>Reservado</th><th>Disponível</th><th>Custo médio</th><th>Valor</th><th>Status</th></tr></thead><tbody>{(stock.data?.items??[]).map(x=><tr key={x.id}><td>{x.code||"—"}</td><td>{x.description}</td><td>{asNumber(x.physical)}</td><td>{asNumber(x.reserved)}</td><td>{asNumber(x.available)}</td><td>{brl(asNumber(x.averageCost))}</td><td>{brl(asNumber(x.stockValue))}</td><td>{x.status}</td></tr>)}</tbody></table></section></TabsContent>
-    </Tabs>
-  </InternalPage></div>
+
+  async function openReport(meta:ManagementReportMeta,autoPrint=false){
+    const key=`${meta.kind}-${meta.year}-${meta.month??"year"}-${autoPrint?"pdf":"view"}`;
+    const popup=window.open("","_blank");
+    if(!popup){toast.error("O navegador bloqueou a janela do relatório. Libere pop-ups para este site.");return;}
+    popup.document.write(`<html><body style="font-family:Arial;padding:32px;background:#111;color:#fff"><h2>Jaguar Radiadores</h2><p>Preparando relatório...</p></body></html>`);
+    setBusy(key);
+    try{
+      const bundle=await loadBundle({...meta,autoPrint});
+      const html=buildManagementReportHtml(bundle,{...meta,autoPrint});
+      popup.document.open();popup.document.write(html);popup.document.close();
+    }catch(e:any){
+      popup.close();toast.error(e?.message||"Não foi possível gerar o relatório.");
+    }finally{setBusy(null)}
+  }
+
+  async function exportCsv(meta:ManagementReportMeta){
+    const key=`csv-${meta.kind}-${meta.year}-${meta.month??"year"}`;setBusy(key);
+    try{const bundle=await loadBundle(meta);downloadManagementCsv(bundle,meta);}
+    catch(e:any){toast.error(e?.message||"Não foi possível exportar o CSV.");}
+    finally{setBusy(null)}
+  }
+
+  return <InternalPage>
+    <PageHeader title="Relatórios" subtitle="Central de documentos gerenciais mensais e anuais da Jaguar Radiadores." />
+
+    <section className="grid gap-4 md:grid-cols-3">
+      <div className="panel report-metric-card"><div className="report-metric-card__top"><span><CalendarDays className="h-4 w-4"/></span></div><h3>Meses disponíveis</h3><p>Últimos períodos com movimentação registrada.</p><b>{summary.months}</b></div>
+      <div className="panel report-metric-card"><div className="report-metric-card__top"><span data-accent="green"><Archive className="h-4 w-4"/></span></div><h3>Anos disponíveis</h3><p>Relatórios anuais construídos a partir da base real.</p><b>{summary.years}</b></div>
+      <div className="panel report-metric-card"><div className="report-metric-card__top"><span data-accent="orange"><FileBarChart className="h-4 w-4"/></span></div><h3>Último período</h3><p>{latest?.isCurrent?"Mês em andamento — dados até hoje.":"Período mais recente com dados."}</p><b>{summary.latest}</b></div>
+    </section>
+
+    <section className="panel p-5">
+      <div className="table-section-heading !px-0 !pt-0"><div><span>RELATÓRIOS MENSAIS</span><h2>Últimos 6 meses com dados</h2><p className="mt-1 text-xs text-muted-foreground">Só aparecem meses que possuem movimentação no PostgreSQL. O mês atual é identificado como parcial.</p></div></div>
+      {periods.isLoading?<LoadingBlock/>:months.length===0?<EmptyBlock/>:<div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{months.map(p=><MonthCard key={p.key} period={p} busy={busy} onView={()=>openReport({kind:"monthly",year:p.year,month:p.month,from:p.from,to:p.to,isCurrent:p.isCurrent})} onPdf={()=>openReport({kind:"monthly",year:p.year,month:p.month,from:p.from,to:p.to,isCurrent:p.isCurrent},true)} onCsv={()=>exportCsv({kind:"monthly",year:p.year,month:p.month,from:p.from,to:p.to,isCurrent:p.isCurrent})}/>)}</div>}
+    </section>
+
+    <section className="panel p-5">
+      <div className="table-section-heading !px-0 !pt-0"><div><span>RELATÓRIOS ANUAIS</span><h2>Consolidados por ano</h2><p className="mt-1 text-xs text-muted-foreground">Incluem comparativo mensal com o ano anterior, custos, caixa, receber, pagar, estoque e atendimentos.</p></div></div>
+      {periods.isLoading?<LoadingBlock/>:years.length===0?<EmptyBlock/>:<div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{years.map(year=>{const p=yearPeriod(year);return <AnnualCard key={year} year={year} current={p.isCurrent} busy={busy} onView={()=>openReport({kind:"annual",year,from:p.from,to:p.to,isCurrent:p.isCurrent})} onPdf={()=>openReport({kind:"annual",year,from:p.from,to:p.to,isCurrent:p.isCurrent},true)} onCsv={()=>exportCsv({kind:"annual",year,from:p.from,to:p.to,isCurrent:p.isCurrent})}/>})}</div>}
+    </section>
+
+    <section className="panel p-5">
+      <div className="flex items-start gap-3"><div className="rounded-lg border p-2 text-[var(--accent-red)]"><CalendarRange className="h-5 w-5"/></div><div><h2 className="font-semibold">Conteúdo dos documentos</h2><p className="mt-1 text-xs leading-5 text-muted-foreground">Cada PDF segue o padrão visual homologado e reúne: resumo gerencial, demonstrativo de faturamento, custos e resultado, fluxo de caixa, contas a receber, contas a pagar, estoque e atendimentos/OS. A posição financeira e o estoque são reconstruídos até a data final do relatório sempre que possível.</p></div></div>
+    </section>
+  </InternalPage>
 }
 
-function MoneyLine({label,value,strong=false}:{label:string;value:number;strong?:boolean}){return <div className={`money-line ${strong?"border-t pt-3 text-base":""}`}><span>{label}</span><b>{brl(value)}</b></div>}
-function MoneyBox({label,value,tone,money=true}:{label:string;value:number;tone:string;money?:boolean}){return <div className="rounded-xl border p-4"><span className="text-xs text-muted-foreground">{label}</span><b className={`mt-1 block text-xl ${tone==="red"?"text-[var(--accent-red)]":tone==="green"?"text-[var(--accent-green)]":""}`}>{money?brl(value):value}</b></div>}
-function FinanceReportTable({kind,items}:{kind:"receive"|"pay";items:Array<any>}){return <section className="panel data-table-wrap"><table className="data-table min-w-[900px]"><thead><tr><th>{kind==="receive"?"Cliente":"Favorecido"}</th><th>Referência</th><th>Parcela</th><th>Vencimento</th><th>Valor</th><th>{kind==="receive"?"Recebido":"Pago"}</th><th>Saldo</th><th>Status</th></tr></thead><tbody>{items.map(x=><tr key={x.id}><td>{kind==="receive"?x.customer:x.supplier}</td><td>{x.reference||x.category||"—"}</td><td>{x.installment??1}/{x.installmentCount??1}</td><td>{datePt(x.dueDate)}</td><td>{brl(asNumber(x.amount))}</td><td>{brl(asNumber(x.paid))}</td><td className="font-semibold">{brl(asNumber(x.balance))}</td><td><StatusPill label={paymentStatusLabel(x.status)} tone={statusToneForPayment(x.status)}/></td></tr>)}</tbody></table></section>}
-function downloadCsv(filename:string,rows:Array<Array<string|number>>){const esc=(v:string|number)=>`"${String(v).replaceAll('"','""')}"`;const csv="\uFEFF"+rows.map(r=>r.map(esc).join(";")).join("\n");const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=filename;a.click();URL.revokeObjectURL(url)}
+function MonthCard({period,busy,onView,onPdf,onCsv}:{period:ReportPeriodItemApi;busy:string|null;onView:()=>void;onPdf:()=>void;onCsv:()=>void}){
+  const prefix=`monthly-${period.year}-${period.month}`;return <article className="panel report-card !min-h-0">
+    <span><CalendarDays className="h-5 w-5"/></span><div className="mt-3 flex items-center justify-between gap-2"><h3 className="!m-0">{monthLabel(period)}</h3>{period.isCurrent&&<em className="rounded-full bg-[color-mix(in_srgb,var(--accent-orange)_14%,transparent)] px-2 py-1 text-[9px] not-italic font-bold text-[var(--accent-orange)]">EM ANDAMENTO</em>}</div>
+    <p>{datePt(period.from)} a {datePt(period.to)}{period.isCurrent?" · posição parcial":""}</p>
+    <div className="mt-auto flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={onView} disabled={!!busy}>{busy===`${prefix}-view`?<Loader2 className="mr-2 h-3.5 w-3.5 animate-spin"/>:<Eye className="mr-2 h-3.5 w-3.5"/>}Visualizar</Button><Button size="sm" onClick={onPdf} disabled={!!busy}>{busy===`${prefix}-pdf`?<Loader2 className="mr-2 h-3.5 w-3.5 animate-spin"/>:<FileDown className="mr-2 h-3.5 w-3.5"/>}PDF</Button><Button size="sm" variant="ghost" onClick={onCsv} disabled={!!busy}><Download className="mr-2 h-3.5 w-3.5"/>CSV</Button></div>
+  </article>
+}
+function AnnualCard({year,current,busy,onView,onPdf,onCsv}:{year:number;current:boolean;busy:string|null;onView:()=>void;onPdf:()=>void;onCsv:()=>void}){
+  const prefix=`annual-${year}-year`;return <article className="panel report-card !min-h-0"><span><FileBarChart className="h-5 w-5"/></span><div className="mt-3 flex items-center justify-between gap-2"><h3 className="!m-0">Relatório Anual {year}</h3>{current&&<em className="rounded-full bg-[color-mix(in_srgb,var(--accent-orange)_14%,transparent)] px-2 py-1 text-[9px] not-italic font-bold text-[var(--accent-orange)]">ANO EM ANDAMENTO</em>}</div><p>{current?"Janeiro até a data atual.":"Exercício completo."} Comparativo automático com {year-1} quando houver base.</p><div className="mt-auto flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={onView} disabled={!!busy}>{busy===`${prefix}-view`?<Loader2 className="mr-2 h-3.5 w-3.5 animate-spin"/>:<Eye className="mr-2 h-3.5 w-3.5"/>}Visualizar</Button><Button size="sm" onClick={onPdf} disabled={!!busy}>{busy===`${prefix}-pdf`?<Loader2 className="mr-2 h-3.5 w-3.5 animate-spin"/>:<FileDown className="mr-2 h-3.5 w-3.5"/>}PDF</Button><Button size="sm" variant="ghost" onClick={onCsv} disabled={!!busy}><Download className="mr-2 h-3.5 w-3.5"/>CSV</Button></div></article>
+}
+function LoadingBlock(){return <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin"/>Carregando períodos disponíveis...</div>}
+function EmptyBlock(){return <div className="py-8 text-sm text-muted-foreground">Ainda não há dados suficientes para gerar relatórios.</div>}
+
+function downloadManagementCsv(bundle:ManagementReportBundle,meta:ManagementReportMeta){
+  const rows:Array<Array<string|number>>=[]; const add=(...r:Array<string|number>)=>rows.push(r); const n=asNumber;
+  add("JAGUAR RADIADORES",meta.kind==="monthly"?"RELATÓRIO GERENCIAL MENSAL":"RELATÓRIO GERENCIAL ANUAL");add("Período",datePt(meta.from),datePt(meta.to));add();
+  add("RESUMO","VALOR");add("Faturamento",n(bundle.costs.billed));add("Entradas",n(bundle.finance.inflow));add("Saídas",n(bundle.finance.outflow));add("Peças consumidas",n(bundle.costs.partsCost));add("Despesas operacionais",n(bundle.costs.operatingExpenses));add("A receber",n(bundle.snapshot.receivableSummary.open));add("Recebíveis vencidos",n(bundle.snapshot.receivableSummary.overdue));add("A pagar",n(bundle.snapshot.payableSummary.open));add("Pagáveis vencidos",n(bundle.snapshot.payableSummary.overdue));add();
+  add("FATURAMENTO MENSAL","ATUAL","ANO ANTERIOR");for(const x of bundle.annual.months)add(MONTHS[x.month-1],n(x.current),n(x.previous));add();
+  add("CONTAS A RECEBER","REFERÊNCIA","PARCELA","VENCIMENTO","VALOR","RECEBIDO","SALDO","STATUS");for(const x of bundle.snapshot.receivables)add(x.customer||"",x.reference||"",`${x.installment||1}/${x.installmentCount||1}`,x.dueDate,n(x.amount),n(x.paid),n(x.balance),x.status);add();
+  add("CONTAS A PAGAR","CATEGORIA","REFERÊNCIA","PARCELA","VENCIMENTO","VALOR","PAGO","SALDO","STATUS");for(const x of bundle.snapshot.payables)add(x.supplier||"",x.category||"",x.reference||"",`${x.installment||1}/${x.installmentCount||1}`,x.dueDate,n(x.amount),n(x.paid),n(x.balance),x.status);add();
+  add("ESTOQUE","CÓDIGO","FÍSICO","RESERVADO","DISPONÍVEL","CUSTO MÉDIO","VALOR","STATUS");for(const x of bundle.snapshot.stock.items)add(x.description,x.code||"",n(x.physical),n(x.reserved),n(x.available),n(x.averageCost),n(x.stockValue),x.status);add();
+  add("ATENDIMENTOS","DATA","CLIENTE","VEÍCULO","VALOR","STATUS");for(const q of bundle.quotes)add(q.number,q.date,q.customerName,q.vehicle||q.plate||"",n(q.total),q.status);
+  const esc=(v:string|number)=>`"${String(v??"").replaceAll('"','""')}"`;const csv="\uFEFF"+rows.map(r=>r.map(esc).join(";")).join("\n");const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=meta.kind==="monthly"?`jaguar-relatorio-gerencial-${meta.year}-${String(meta.month||1).padStart(2,"0")}.csv`:`jaguar-relatorio-gerencial-anual-${meta.year}.csv`;a.click();URL.revokeObjectURL(url);toast.success(`CSV exportado · faturamento ${brl(n(bundle.costs.billed))}`);
+}

@@ -24,6 +24,8 @@ import type {
   CostsReportApi,
   FinanceReportApi,
   StockReportApi,
+  ReportPeriodsApi,
+  ReportSnapshotApi,
 } from "@/types/api";
 
 export const jaguarApi = {
@@ -124,6 +126,8 @@ export const jaguarApi = {
     costs: (params: { from?: string; to?: string } = {}) => getJson<CostsReportApi>(`reports/costs${queryString(params)}`),
     finance: (params: { from?: string; to?: string } = {}) => getJson<FinanceReportApi>(`reports/finance${queryString(params)}`),
     stock: () => getJson<StockReportApi>("reports/stock"),
+    periods: (limit = 6) => getJson<ReportPeriodsApi>(`reports/periods${queryString({ limit })}`),
+    snapshot: (params: { from: string; to: string }) => getJson<ReportSnapshotApi>(`reports/snapshot${queryString(params)}`),
   },
 
   health: () => getJson<ApiOk & Record<string, any>>("health"),

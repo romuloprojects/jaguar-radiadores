@@ -395,3 +395,38 @@ export type StockReportApi = ApiOk & {
     status: string;
   }>;
 };
+
+export type ReportPeriodItemApi = {
+  key: string;
+  year: number;
+  month: number;
+  from: string;
+  to: string;
+  isCurrent: boolean;
+};
+
+export type ReportPeriodsApi = ApiOk & {
+  months: ReportPeriodItemApi[];
+  years: number[];
+  generatedAt?: string;
+};
+
+export type ReportSnapshotApi = ApiOk & {
+  from: string;
+  to: string;
+  receivableSummary: {
+    open: number | string;
+    overdue: number | string;
+    paidInPeriod: number | string;
+    customersOverdue: number;
+  };
+  payableSummary: {
+    open: number | string;
+    overdue: number | string;
+    paidInPeriod: number | string;
+  };
+  receivables: ReceivableApi[];
+  payables: PayableApi[];
+  stock: Omit<StockReportApi, "ok">;
+  generatedAt?: string;
+};

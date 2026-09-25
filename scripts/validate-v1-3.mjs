@@ -8,7 +8,7 @@ const router = read('src/router.tsx');
 check(router.includes('staleTime: Infinity'), 'cache sem expiração automática habilitado');
 check(router.includes('refetchOnWindowFocus: false'), 'refetch ao focar janela desabilitado');
 check(router.includes('refetchOnReconnect: false'), 'refetch ao reconectar desabilitado');
-check(router.includes('refetchOnMount: false'), 'refetch automático ao remontar desabilitado');
+check(router.includes('refetchOnMount: (query) => query.state.isInvalidated'), 'remount só revalida cache explicitamente invalidado');
 check(router.includes('retry: 0'), 'retry automático de queries desabilitado');
 
 const settings = read('src/routes/configuracoes.tsx');

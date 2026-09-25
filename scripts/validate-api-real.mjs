@@ -62,7 +62,7 @@ const expectedPaths = [
   'stock/movements','stock/movement','purchases','purchase-detail','purchase-create','purchase-update','purchase-confirm','purchase-cancel',
   'quotes','quote-detail','quote-create','quote-update','quote-complete','quote-cancel','quote-document',
   'finance/receivables','finance/receivable-payment','finance/payables','finance/payable-create','finance/payable-payment','finance/cash-flow','finance/manual-transaction',
-  'dashboard/overview','reports/annual','reports/costs','reports/finance','reports/stock','health','entity-delete',
+  'dashboard/overview','reports/annual','reports/costs','reports/finance','reports/stock','reports/periods','reports/snapshot','health','entity-delete',
 ];
 const missingPaths = expectedPaths.filter((p) => !api.includes(`"${p}`) && !api.includes(`\`${p}`));
 if (missingPaths.length) fail(`Endpoints do backend sem wrapper no frontend: ${missingPaths.join(', ')}`);
@@ -86,7 +86,7 @@ const uiCoverage = {
   stock: ['jaguarApi.catalog.products','jaguarApi.stock.movements','jaguarApi.stock.movement','jaguarApi.purchases.list','jaguarApi.purchases.create','jaguarApi.purchases.update','jaguarApi.purchases.confirm','jaguarApi.purchases.cancel'],
   suppliers: ['jaguarApi.suppliers.list','jaguarApi.suppliers.detail','jaguarApi.suppliers.create','jaguarApi.suppliers.update'],
   finance: ['jaguarApi.finance.receivables','jaguarApi.finance.receive','jaguarApi.finance.payables','jaguarApi.finance.createPayable','jaguarApi.finance.pay','jaguarApi.finance.cashFlow','jaguarApi.finance.manualTransaction'],
-  reports: ['jaguarApi.reports.annual','jaguarApi.reports.costs','jaguarApi.reports.finance','jaguarApi.reports.stock'],
+  reports: ['jaguarApi.reports.periods','jaguarApi.reports.annual','jaguarApi.reports.costs','jaguarApi.reports.finance','jaguarApi.reports.snapshot','jaguarApi.quotes.list','jaguarApi.settings.get'],
   settings: ['jaguarApi.settings.get','jaguarApi.settings.save','jaguarApi.settings.users','jaguarApi.settings.createUser','jaguarApi.settings.updateUser','jaguarApi.catalog.services','jaguarApi.catalog.createService','jaguarApi.catalog.updateService','jaguarApi.health'],
 };
 const routeTexts = {

@@ -11,7 +11,9 @@ export const getRouter = () => {
         retry: 0,
         refetchOnWindowFocus: false,
         refetchOnReconnect: false,
-        refetchOnMount: false,
+        // Só revalida ao montar quando alguma mutação marcou o cache como inválido.
+        // Queries normais continuam estáveis e não recarregam por navegação.
+        refetchOnMount: (query) => query.state.isInvalidated,
       },
       mutations: { retry: 0 },
     },

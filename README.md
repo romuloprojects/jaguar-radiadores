@@ -112,3 +112,19 @@ O build completo com instalação de dependências não pôde ser executado no a
 Esta versão remove atualização automática por foco/reconexão e o polling do healthcheck. As telas carregam dados ao entrar pela primeira vez e voltam a consultar o backend quando uma ação do usuário invalida os dados relacionados. A lista de Orçamentos também passou a filtrar busca/status localmente após a carga inicial.
 
 Para a melhor resposta da listagem de Orçamentos, aplique uma vez o workflow backend `07_JAGUAR_V1_3_PATCH_PERFORMANCE_ORCAMENTOS`.
+
+
+## V1.4 — sincronização silenciosa
+
+A interface não recarrega visualmente após inclusões, alterações, exclusões ou pagamentos. O TanStack Query mantém os dados atuais em tela, sincroniza apenas os domínios afetados em segundo plano e atualiza a UI quando a resposta chega. Buscas e filtros operacionais principais são locais sobre o cache já carregado. Não há polling ou refetch por foco/reconexão. Esta versão não exige patch de backend.
+
+
+## V1.6 — Central de Relatórios Gerenciais
+
+- Exibe somente meses com dados, limitando o acesso rápido aos 6 mais recentes.
+- Exibe relatórios anuais para todos os anos existentes na base.
+- O mês/ano em andamento é identificado como parcial.
+- Visualização e impressão seguem o PDF gerencial homologado em 8 seções.
+- O botão **PDF** abre o documento e aciona o diálogo nativo de impressão/Salvar como PDF.
+- O CSV exporta os dados completos do período.
+- Requer o patch backend V1.6 e o workflow `71 JAGUAR - Reports Documents API` ativo.

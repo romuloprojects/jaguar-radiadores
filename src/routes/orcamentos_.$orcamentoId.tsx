@@ -15,6 +15,7 @@ import { jaguarApi } from "@/services/jaguarApi";
 import { brl } from "@/utils/format";
 import { asNumber, authorizationLabel, datePt, paymentMethodLabel, paymentStatusLabel, quoteStatusLabel, statusToneForPayment, statusToneForQuote } from "@/utils/api-format";
 import { buildQuotePrintHtml } from "@/utils/quote-print";
+import { setCachedDetail, silentInvalidate } from "@/utils/query-sync";
 
 export const Route = createFileRoute("/orcamentos_/$orcamentoId")({ component: QuoteDetailPage });
 
@@ -23,10 +24,10 @@ function QuoteDetailPage(){
   const q=useQuery({queryKey:["quote",orcamentoId],queryFn:()=>jaguarApi.quotes.detail(orcamentoId)}); const quote=q.data?.quote;
   const [issue,setIssue]=useState(""); const [diagnosis,setDiagnosis]=useState(""); const [notes,setNotes]=useState("");
   useEffect(()=>{if(quote){setIssue(quote.issueReported??"");setDiagnosis(quote.diagnosis??"");setNotes(quote.notes??"");}},[quote]);
-  async function refresh(){await qc.invalidateQueries({queryKey:["quote",orcamentoId]});await qc.invalidateQueries({queryKey:["quotes"]});await qc.invalidateQueries({queryKey:["dashboard"]});await qc.invalidateQueries({queryKey:["finance"]});}
-  const update=useMutation({mutationFn:()=>jaguarApi.quotes.update({id:orcamentoId,issueReported:issue,diagnosis,notes}),onSuccess:async()=>{toast.success("Atendimento atualizado.");await refresh();},onError:e=>toast.error(e.message)});
-  const complete=useMutation({mutationFn:()=>jaguarApi.quotes.complete(orcamentoId),onSuccess:async()=>{toast.success("Atendimento concluído e estoque consumido conforme configuração.");await refresh();},onError:e=>toast.error(e.message)});
-  const cancel=useMutation({mutationFn:()=>jaguarApi.quotes.cancel(orcamentoId),onSuccess:async()=>{toast.success("Atendimento cancelado.");await refresh();},onError:e=>toast.error(e.message)});
+  function refresh(){silentInvalidate(qc,[["quote",orcamentoId],["quotes"],["dashboard"],["receivables"],["cashflow"],["products"],["reports"]]);}
+  const update=useMutation({mutationFn:()=>jaguarApi.quotes.update({id:orcamentoId,issueReported:issue,diagnosis,notes}),onSuccess:(r)=>{toast.success("Atendimento atualizado.");setCachedDetail(qc,["quote",orcamentoId],r);refresh();},onError:e=>toast.error(e.message)});
+  const complete=useMutation({mutationFn:()=>jaguarApi.quotes.complete(orcamentoId),onSuccess:(r)=>{toast.success("Atendimento concluído e estoque consumido conforme configuração.");setCachedDetail(qc,["quote",orcamentoId],r);refresh();},onError:e=>toast.error(e.message)});
+  const cancel=useMutation({mutationFn:()=>jaguarApi.quotes.cancel(orcamentoId),onSuccess:(r)=>{toast.success("Atendimento cancelado.");setCachedDetail(qc,["quote",orcamentoId],r);refresh();},onError:e=>toast.error(e.message)});
   const printDocument=useMutation({mutationFn:async()=>{const r=await jaguarApi.quotes.document(orcamentoId);const pix=(r.document as any)?.pix?.copyPaste as string|undefined;let qrDataUrl:string|null=null;if(pix){qrDataUrl=await QRCode.toDataURL(pix,{width:320,margin:1,errorCorrectionLevel:"M"});}return {document:r.document,qrDataUrl};},onSuccess:({document,qrDataUrl})=>{const win=window.open("","_blank");if(!win){toast.error("O navegador bloqueou a janela de impressão. Libere pop-ups para este site.");return;}win.opener=null;win.document.open();win.document.write(buildQuotePrintHtml({document,quote,qrDataUrl}));win.document.close();toast.success("Documento aberto para impressão ou salvar em PDF.");},onError:e=>toast.error(e.message)});
   const copyPix=useMutation({mutationFn:()=>jaguarApi.quotes.document(orcamentoId),onSuccess:async(r)=>{const pix=(r.document as any)?.pix?.copyPaste;if(!pix){toast.error("Cadastre a chave PIX em Configurações para gerar o código.");return;}await navigator.clipboard.writeText(pix);toast.success("PIX Copia e Cola copiado.");},onError:e=>toast.error(e.message)});
   if(q.isLoading)return <InternalPage><div className="panel p-8 text-muted-foreground">Carregando atendimento...</div></InternalPage>;

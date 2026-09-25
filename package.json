@@ -11,10 +11,12 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "validate:jaguar": "node scripts/validate-jaguar.mjs && node scripts/validate-api-real.mjs && node scripts/validate-v1-1.mjs && node scripts/validate-v1-2.mjs && node scripts/validate-v1-3.mjs",
+    "validate:jaguar": "node scripts/validate-jaguar.mjs && node scripts/validate-api-real.mjs && node scripts/validate-v1-1.mjs && node scripts/validate-v1-2.mjs && node scripts/validate-v1-3.mjs && node scripts/validate-v1-4.mjs && node scripts/validate-v1-6.mjs",
     "validate:api": "node scripts/validate-api-real.mjs",
     "validate:v1-2": "node scripts/validate-v1-2.mjs",
-    "validate:v1-3": "node scripts/validate-v1-3.mjs"
+    "validate:v1-3": "node scripts/validate-v1-3.mjs",
+    "validate:v1-4": "node scripts/validate-v1-4.mjs",
+    "validate:v1-6": "node scripts/validate-v1-6.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -89,6 +91,6 @@
     "typescript-eslint": "^8.56.1",
     "vite": "^8.0.16"
   },
-  "version": "1.3.0",
+  "version": "1.6.0",
   "packageManager": "bun@1.3.0"
 }
