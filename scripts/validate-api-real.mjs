@@ -62,7 +62,7 @@ const expectedPaths = [
   'stock/movements','stock/movement','purchases','purchase-detail','purchase-create','purchase-update','purchase-confirm','purchase-cancel',
   'quotes','quote-detail','quote-create','quote-update','quote-complete','quote-cancel','quote-document',
   'finance/receivables','finance/receivable-payment','finance/payables','finance/payable-create','finance/payable-payment','finance/cash-flow','finance/manual-transaction',
-  'dashboard/overview','reports/annual','reports/costs','reports/finance','reports/stock','health',
+  'dashboard/overview','reports/annual','reports/costs','reports/finance','reports/stock','health','entity-delete',
 ];
 const missingPaths = expectedPaths.filter((p) => !api.includes(`"${p}`) && !api.includes(`\`${p}`));
 if (missingPaths.length) fail(`Endpoints do backend sem wrapper no frontend: ${missingPaths.join(', ')}`);
@@ -71,7 +71,7 @@ const proxy = read('src/routes/api/jaguar/$.ts');
 for (const token of ['JAGUAR_N8N_WEBHOOK_BASE_URL','jaguar_session','HttpOnly','SameSite=Lax','Authorization','auth/login']) {
   if (!proxy.includes(token)) fail(`Proxy Jaguar sem requisito de segurança/integração: ${token}`);
 }
-if (!/GET:\s*handler/.test(proxy) || !/POST:\s*handler/.test(proxy) || !/PATCH:\s*handler/.test(proxy)) fail('Proxy Jaguar não expõe GET/POST/PATCH esperados.');
+if (!/GET:\s*handler/.test(proxy) || !/POST:\s*handler/.test(proxy) || !/PATCH:\s*handler/.test(proxy) || !/DELETE:\s*handler/.test(proxy)) fail('Proxy Jaguar não expõe GET/POST/PATCH/DELETE esperados.');
 
 const env = read('.env.example');
 if (!env.includes('JAGUAR_N8N_WEBHOOK_BASE_URL=')) fail('.env.example não documenta JAGUAR_N8N_WEBHOOK_BASE_URL.');

@@ -206,6 +206,15 @@ export type QuoteDetailApi = {
   }>;
 };
 
+export type PaymentRecordApi = {
+  id: string;
+  amount: number | string;
+  date: string;
+  methodCode?: string | null;
+  reference?: string | null;
+  notes?: string | null;
+};
+
 export type ReceivableApi = {
   id: string;
   customerId?: string | null;
@@ -220,6 +229,7 @@ export type ReceivableApi = {
   status: string;
   isOverdue?: boolean;
   methodCode?: string | null;
+  payments?: PaymentRecordApi[];
 };
 
 export type PayableApi = {
@@ -238,6 +248,7 @@ export type PayableApi = {
   status: string;
   isOverdue?: boolean;
   methodCode?: string | null;
+  payments?: PaymentRecordApi[];
 };
 
 export type CashFlowEntryApi = {
@@ -248,6 +259,8 @@ export type CashFlowEntryApi = {
   kind: "Entrada" | "Saída";
   amount: number | string;
   status: string;
+  sourceType?: string | null;
+  sourceId?: string | null;
 };
 
 export type DashboardOverviewApi = ApiOk & {
@@ -304,6 +317,8 @@ export type StockMovementApi = {
   unitCost?: number | string | null;
   notes?: string | null;
   createdAt: string;
+  purchaseId?: string | null;
+  quoteId?: string | null;
 };
 
 export type PurchaseListItemApi = {

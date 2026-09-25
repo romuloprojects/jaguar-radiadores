@@ -43,6 +43,8 @@ export const postJson = <T>(path: string, body?: unknown) =>
   apiRequest<T>(path, { method: "POST", body: JSON.stringify(body ?? {}) });
 export const patchJson = <T>(path: string, body?: unknown) =>
   apiRequest<T>(path, { method: "PATCH", body: JSON.stringify(body ?? {}) });
+export const deleteJson = <T>(path: string, body?: unknown) =>
+  apiRequest<T>(path, { method: "DELETE", body: JSON.stringify(body ?? {}) });
 
 export function queryString(params: Record<string, unknown>) {
   const q = new URLSearchParams();

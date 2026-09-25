@@ -1,4 +1,4 @@
-import { getJson, patchJson, postJson, queryString } from "@/services/apiClient";
+import { deleteJson, getJson, patchJson, postJson, queryString } from "@/services/apiClient";
 import type {
   ApiOk,
   ApiUser,
@@ -27,6 +27,7 @@ import type {
 } from "@/types/api";
 
 export const jaguarApi = {
+  remove: (entity: string, id: string) => deleteJson<ApiOk>("entity-delete", { entity, id }),
   auth: {
     login: (username: string, password: string, remember: boolean) =>
       postJson<AuthPayload>("auth/login", { username, password, remember }),

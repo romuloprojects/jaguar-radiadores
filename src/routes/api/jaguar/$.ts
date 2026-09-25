@@ -53,6 +53,7 @@ function statusFromPayload(payload: any, upstreamStatus: number) {
     case "DUPLICATE":
     case "DUPLICATE_PAYMENT":
     case "HAS_PAYMENTS":
+    case "HAS_DEPENDENCIES":
     case "INVALID_STATE":
       return 409;
     default:
@@ -128,6 +129,7 @@ export const Route = createFileRoute("/api/jaguar/$")({
       GET: handler,
       POST: handler,
       PATCH: handler,
+      DELETE: handler,
     },
   },
 });

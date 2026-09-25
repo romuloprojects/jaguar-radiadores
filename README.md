@@ -1,4 +1,4 @@
-# Jaguar Radiadores — Frontend API Real V1.1
+# Jaguar Radiadores — Frontend API Real V1.2
 
 Frontend homologado da Jaguar Radiadores conectado ao backend real n8n + PostgreSQL.
 
@@ -95,3 +95,14 @@ O build completo com instalação de dependências não pôde ser executado no a
 - O documento **Orçamento / Ordem de Serviço** segue a baseline A4 homologada e pode ser impresso ou salvo como PDF.
 - PIX fica opcional: sem chave cadastrada o documento continua funcionando; após configurar a chave em Configurações, o sistema exibe QR Code + Pix Copia e Cola automaticamente.
 - Contas a Receber e Contas a Pagar exibem parcelas individualmente, permitem baixas parciais e destacam atraso automaticamente.
+
+
+## Novidades V1.2
+
+- Ao imprimir/Salvar como PDF, o título do documento é somente o número da OS, por exemplo `ORC-00002`, favorecendo esse nome de arquivo no diálogo do navegador.
+- Removidos do documento impresso o texto “Documento emitido pelo sistema Jaguar Radiadores” e o status operacional do orçamento/OS.
+- O documento não imprime status de pagamento das parcelas; mostra apenas o combinado (vencimento e valor), preservando o caráter histórico da OS.
+- Exclusão com confirmação adicionada aos cadastros e registros que o sistema permite criar: clientes, veículos/equipamentos, fornecedores, produtos/peças, serviços, usuários, compras, orçamentos/OS, contas a pagar, movimentações manuais de estoque, lançamentos financeiros manuais e recebimentos/pagamentos registrados.
+- Exclusões destrutivas são autorizadas somente para administradores pelo backend.
+- Recebimentos/pagamentos aparecem no histórico da parcela e podem ser excluídos para corrigir testes; o saldo e o fluxo de caixa são recalculados automaticamente.
+- Requer o patch backend V1.2 (`05` executado uma vez + `06` ativo).

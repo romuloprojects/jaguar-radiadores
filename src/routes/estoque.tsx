@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { FilterBar, InternalPage, StatCard, StatusPill, chartTooltipStyle } from "@/components/InternalPage";
 import { PageHeader } from "@/components/ui-helpers";
+import { DeleteAction } from "@/components/DeleteAction";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -108,7 +109,7 @@ function InventoryPage() {
                   <td className={asNumber(item.available)<=asNumber(item.minimum)?"font-bold text-[var(--accent-red)]":"font-bold text-[var(--accent-green)]"}>{asNumber(item.available)}</td>
                   <td>{brl(asNumber(item.unitCost))}</td><td>{brl(asNumber(item.salePrice))}</td>
                   <td><StatusPill label={item.status} tone={item.status==="Normal"?"positive":item.status==="Baixo"?"warning":"danger"}/></td>
-                  <td><ProductDialog product={item} onDone={refresh}/></td>
+                  <td><div className="flex items-center gap-1"><ProductDialog product={item} onDone={refresh}/><DeleteAction iconOnly title={`Excluir ${item.description}?`} description="O produto será removido do catálogo. Se houver compras vinculadas a ele, exclua essas compras primeiro. Orçamentos históricos preservam a descrição e os valores gravados." onDelete={()=>jaguarApi.remove("product",item.id)} onDone={refresh}/></div></td>
                 </tr>)}
                 {!productsQuery.isLoading && products.length===0 && <tr><td colSpan={11} className="py-10 text-center text-muted-foreground">Nenhum produto cadastrado.</td></tr>}
               </tbody>
@@ -123,7 +124,7 @@ function InventoryPage() {
             <section className="panel inventory-side-card">
               <div className="flex items-center justify-between"><h2>Movimentações recentes</h2><StockMovementDialog products={products} onDone={refresh} compact/></div>
               <div className="mt-3 space-y-1">{movements.map((move)=>{
-                const positive=asNumber(move.quantity)>=0; return <div className="stock-move" key={move.id}><span className={positive?"positive":"negative"}>{positive?<ArrowDown/>:<ArrowUp/>}</span><div><b>{movementLabels[move.type] || move.type}</b><small>{move.code?`${move.code} • `:""}{move.product}</small></div><div className="text-right"><b>{positive?"+":""}{asNumber(move.quantity)} un.</b><small>{dateTimePt(move.createdAt)}</small></div></div>;
+                const positive=asNumber(move.quantity)>=0; const manual=!move.purchaseId&&!move.quoteId; return <div className="stock-move" key={move.id}><span className={positive?"positive":"negative"}>{positive?<ArrowDown/>:<ArrowUp/>}</span><div><b>{movementLabels[move.type] || move.type}</b><small>{move.code?`${move.code} • `:""}{move.product}</small></div><div className="flex items-center gap-2 text-right"><div><b>{positive?"+":""}{asNumber(move.quantity)} un.</b><small>{dateTimePt(move.createdAt)}</small></div>{manual&&<DeleteAction iconOnly title="Excluir movimentação manual?" description="O lançamento será removido e o saldo físico será recalculado a partir do histórico restante." onDelete={()=>jaguarApi.remove("stock_movement",move.id)} onDone={refresh}/>}</div></div>;
               })}{!movementsQuery.isLoading && movements.length===0 && <p className="py-8 text-center text-sm text-muted-foreground">Sem movimentações ainda.</p>}</div>
             </section>
           </aside>
@@ -219,7 +220,7 @@ function PurchaseDialog({ onDone }: { onDone:()=>Promise<void>|void }) {
 function PurchaseRow({purchase,onDone}:{purchase:PurchaseListItemApi;onDone:()=>Promise<void>|void}){
   const confirm=useMutation({mutationFn:()=>jaguarApi.purchases.confirm(purchase.id),onSuccess:async()=>{toast.success("Compra confirmada: estoque e contas a pagar atualizados.");await onDone();},onError:e=>toast.error(e.message)});
   const cancel=useMutation({mutationFn:()=>jaguarApi.purchases.cancel(purchase.id),onSuccess:async()=>{toast.success("Compra cancelada.");await onDone();},onError:e=>toast.error(e.message)});
-  return <tr><td className="font-semibold">{purchase.number}</td><td>{datePt(purchase.date)}</td><td>{purchase.supplier}</td><td>{purchase.documentNumber||"—"}</td><td className="font-semibold">{brl(asNumber(purchase.total))}</td><td><StatusPill label={purchase.status==="draft"?"Rascunho":purchase.status==="confirmed"?"Confirmada":"Cancelada"} tone={purchase.status==="confirmed"?"positive":purchase.status==="cancelled"?"danger":"warning"}/></td><td><div className="flex gap-1">{purchase.status==="draft"&&<><PurchaseEditDialog purchase={purchase} onDone={onDone}/><Button size="sm" variant="outline" onClick={()=>confirm.mutate()} disabled={confirm.isPending}><CheckCircle2 className="mr-1 h-4 w-4"/>Confirmar</Button><Button size="sm" variant="ghost" onClick={()=>cancel.mutate()} disabled={cancel.isPending}><XCircle className="mr-1 h-4 w-4"/>Cancelar</Button></>}</div></td></tr>;
+  return <tr><td className="font-semibold">{purchase.number}</td><td>{datePt(purchase.date)}</td><td>{purchase.supplier}</td><td>{purchase.documentNumber||"—"}</td><td className="font-semibold">{brl(asNumber(purchase.total))}</td><td><StatusPill label={purchase.status==="draft"?"Rascunho":purchase.status==="confirmed"?"Confirmada":"Cancelada"} tone={purchase.status==="confirmed"?"positive":purchase.status==="cancelled"?"danger":"warning"}/></td><td><div className="flex gap-1">{purchase.status==="draft"&&<><PurchaseEditDialog purchase={purchase} onDone={onDone}/><Button size="sm" variant="outline" onClick={()=>confirm.mutate()} disabled={confirm.isPending}><CheckCircle2 className="mr-1 h-4 w-4"/>Confirmar</Button><Button size="sm" variant="ghost" onClick={()=>cancel.mutate()} disabled={cancel.isPending}><XCircle className="mr-1 h-4 w-4"/>Cancelar</Button></>}<DeleteAction iconOnly title={`Excluir ${purchase.number}?`} description="A compra será excluída. Se já estiver confirmada, suas entradas de estoque, contas a pagar e pagamentos vinculados também serão removidos para desfazer os efeitos do registro." onDelete={()=>jaguarApi.remove("purchase",purchase.id)} onDone={onDone}/></div></td></tr>;
 }
 
 function PurchaseEditDialog({purchase,onDone}:{purchase:PurchaseListItemApi;onDone:()=>Promise<void>|void}){

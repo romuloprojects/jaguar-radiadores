@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { FilterBar, InternalPage, StatCard, StatusPill, chartTooltipStyle } from "@/components/InternalPage";
 import { PageHeader } from "@/components/ui-helpers";
+import { DeleteAction } from "@/components/DeleteAction";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -48,7 +49,7 @@ function SuppliersPage() {
       </div>
       <aside className="panel supplier-detail-panel">
         {!selected?<div className="py-16 text-center text-sm text-muted-foreground">Selecione um fornecedor para visualizar os detalhes.</div>:<>
-          <div className="supplier-detail-panel__header"><div className="supplier-monogram">{initials(selected.name)}</div><div className="min-w-0"><div className="flex items-center gap-2"><h2>{selected.name}</h2><StatusPill label="Ativo" tone="positive"/></div><p>{selected.document||"Documento não informado"}</p></div><SupplierDialog supplier={selected} onDone={refresh}/></div>
+          <div className="supplier-detail-panel__header"><div className="supplier-monogram">{initials(selected.name)}</div><div className="min-w-0"><div className="flex items-center gap-2"><h2>{selected.name}</h2><StatusPill label="Ativo" tone="positive"/></div><p>{selected.document||"Documento não informado"}</p></div><div className="flex items-center gap-1"><SupplierDialog supplier={selected} onDone={refresh}/><DeleteAction iconOnly title={`Excluir ${selected.name}?`} description="O fornecedor será removido. Se houver compras vinculadas, exclua essas compras primeiro para preservar a integridade financeira e do estoque." onDelete={()=>jaguarApi.remove("supplier",selected.id)} onDone={async()=>{setSelectedId("");await refresh();}}/></div></div>
           <div className="supplier-detail-tabs"><button className="is-active">Visão Geral</button><button>Produtos</button><button>Compras</button><button>Financeiro</button></div>
           <div className="grid gap-3">
             <section className="detail-section"><h3>Dados do fornecedor</h3><div className="detail-line"><Building2/><span>{selected.legalName||selected.name}</span></div><div className="detail-line"><Phone/><span>{selected.phone||selected.whatsapp||"—"}</span></div>{selected.email&&<div className="detail-line"><Mail/><span>{selected.email}</span></div>}<div className="detail-line"><MapPin/><span>{[selected.street,selected.number,selected.city,selected.state].filter(Boolean).join(" • ")||"—"}</span></div><div className="detail-line"><Truck/><span>Contato: {selected.contact||"—"}</span></div></section>
