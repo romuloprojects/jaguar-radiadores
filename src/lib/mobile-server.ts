@@ -1,4 +1,4 @@
-import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, stat, writeFile, rename, unlink } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 
@@ -61,23 +61,41 @@ export async function validateMobileSession(token: string) {
   return { ok: upstream.ok && payload?.ok !== false, payload, status: statusFromPayload(payload, upstream.status) };
 }
 
+export class ProductImageError extends Error {
+  code: string; status: number;
+  constructor(code: string, status: number) { super(code); this.code=code; this.status=status; }
+}
+export function productImageMime(type: string, name: string, bytes: Uint8Array) {
+  let mime=type.split(';')[0].trim().toLowerCase();
+  if(mime==='image/jpg')mime='image/jpeg';
+  if(!mime||mime==='application/octet-stream')mime=mimeFromName(name);
+  let signature='';
+  if(bytes[0]===0xff&&bytes[1]===0xd8&&bytes[2]===0xff)signature='image/jpeg';
+  else if([137,80,78,71,13,10,26,10].every((v,i)=>bytes[i]===v))signature='image/png';
+  else if(bytes.length>=12&&String.fromCharCode(...bytes.slice(0,4))==='RIFF'&&String.fromCharCode(...bytes.slice(8,12))==='WEBP')signature='image/webp';
+  if(!signature||mime!==signature)throw new ProductImageError('UNSUPPORTED_IMAGE',415);
+  return mime;
+}
 export async function saveProductImage(file: File) {
-  const mime = file.type || "application/octet-stream";
-  const allowed: Record<string, string> = {
-    "image/jpeg": ".jpg",
-    "image/png": ".png",
-    "image/webp": ".webp",
-  };
-  const ext = allowed[mime];
-  if (!ext) throw new Error("UNSUPPORTED_IMAGE");
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  if (bytes.byteLength <= 0) throw new Error("EMPTY_IMAGE");
-  if (bytes.byteLength > 8 * 1024 * 1024) throw new Error("IMAGE_TOO_LARGE");
-  await mkdir(MOBILE_PRODUCT_DIR, { recursive: true });
-  const fileName = `${Date.now()}-${randomUUID()}${ext}`;
-  const target = path.join(MOBILE_PRODUCT_DIR, fileName);
-  await writeFile(target, bytes);
-  return { fileName, bytes: bytes.byteLength, mime, target };
+  if(file.size<=0)throw new ProductImageError('EMPTY_IMAGE',400);
+  if(file.size>8*1024*1024)throw new ProductImageError('IMAGE_TOO_LARGE',413);
+  const bytes=new Uint8Array(await file.arrayBuffer());
+  if(bytes.byteLength<=0)throw new ProductImageError('EMPTY_IMAGE',400);
+  if(bytes.byteLength>8*1024*1024)throw new ProductImageError('IMAGE_TOO_LARGE',413);
+  const mime=productImageMime(file.type,file.name,bytes);
+  const ext=({'image/jpeg':'.jpg','image/png':'.png','image/webp':'.webp'} as Record<string,string>)[mime];
+  const fileName=`${Date.now()}-${randomUUID()}${ext}`;
+  const target=path.join(MOBILE_PRODUCT_DIR,fileName);const temporary=target+'.tmp';
+  try{
+    await mkdir(MOBILE_PRODUCT_DIR,{recursive:true});
+    await writeFile(temporary,bytes,{flag:'wx'});
+    await rename(temporary,target);
+  }catch(error:any){
+    await unlink(temporary).catch(()=>{});
+    console.error('Jaguar photo filesystem',{code:error?.code,directory:MOBILE_PRODUCT_DIR,fileName});
+    throw new ProductImageError(error?.code==='ENOSPC'?'UPLOAD_STORAGE_FULL':'UPLOAD_FILESYSTEM_ERROR',error?.code==='ENOSPC'?507:503);
+  }
+  return {fileName,bytes:bytes.byteLength,mime,target};
 }
 
 export function safeProductImagePath(name: string) {

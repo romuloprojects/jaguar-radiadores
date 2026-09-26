@@ -16,7 +16,8 @@
     "validate:v1-2": "node scripts/validate-v1-2.mjs",
     "validate:v1-3": "node scripts/validate-v1-3.mjs",
     "validate:v1-4": "node scripts/validate-v1-4.mjs",
-    "validate:v1-6": "node scripts/validate-v1-6.mjs"
+    "validate:v1-6": "node scripts/validate-v1-6.mjs",
+    "test:photo": "node scripts/test-product-photo.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

@@ -49,7 +49,7 @@ function InventoryPage() {
   const qc = useQueryClient();
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("");
-  const productsQuery = useQuery({ queryKey: ["products"], queryFn: () => jaguarApi.catalog.products({ limit: 500 }) });
+  const productsQuery = useQuery({ queryKey: ["products"], queryFn: () => jaguarApi.catalog.products({ limit: 500 }), staleTime: 0, refetchOnMount: "always", refetchOnWindowFocus: true, refetchOnReconnect: true });
   const movementsQuery = useQuery({ queryKey: ["stock-movements"], queryFn: () => jaguarApi.stock.movements({ limit: 12 }) });
   const purchasesQuery = useQuery({ queryKey: ["purchases"], queryFn: () => jaguarApi.purchases.list({ limit: 30 }) });
   const allProducts = productsQuery.data?.items ?? [];
