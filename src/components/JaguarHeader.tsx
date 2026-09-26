@@ -8,6 +8,7 @@ import {
   Menu,
   Search,
   Settings,
+  Smartphone,
   Truck,
   Users,
   WalletCards,
@@ -36,6 +37,7 @@ const nav = [
   { to: "/financeiro", label: "Financeiro", icon: WalletCards },
   { to: "/fornecedores", label: "Fornecedores", icon: Truck },
   { to: "/relatorios", label: "Relatórios", icon: Boxes },
+  { to: "/aplicativo", label: "Aplicativo", icon: Smartphone },
 ] as const;
 
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {

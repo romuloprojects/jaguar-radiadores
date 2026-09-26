@@ -128,3 +128,31 @@ A interface não recarrega visualmente após inclusões, alterações, exclusõe
 - O botão **PDF** abre o documento e aciona o diálogo nativo de impressão/Salvar como PDF.
 - O CSV exporta os dados completos do período.
 - Requer o patch backend V1.6 e o workflow `71 JAGUAR - Reports Documents API` ativo.
+
+
+## V1.7 — Login industrial Jaguar
+
+- Reformulação visual apenas da lateral institucional da tela de login.
+- Mantém autenticação, formulário e backend inalterados.
+- Usa a logo oficial já existente no projeto e um recorte industrial sem textos como apoio visual.
+- Nova composição com caminhão/radiador, gradientes escuros, acento diagonal vermelho e módulos de Atendimentos, Estoque e Financeiro.
+- Mobile continua usando o login compacto existente.
+
+## V1.8 — Mobile Jaguar
+
+- nova aba **Aplicativo** com instruções para instalação privada do APK;
+- proxy mobile `/api/mobile/jaguar/*` com Bearer token próprio do aplicativo;
+- upload autenticado de foto de produto em `/api/mobile/media/product-image`;
+- entrega de imagens por `/api/mobile/media/products/*`;
+- endpoint `/api/mobile/apk` para disponibilizar o APK diretamente pelo frontend;
+- volume persistente recomendado em `/data/jaguar`.
+
+Variáveis opcionais:
+
+```text
+JAGUAR_UPLOAD_DIR=/data/jaguar/uploads
+JAGUAR_ANDROID_APK_PATH=/data/jaguar/releases/jaguar-radiadores.apk
+JAGUAR_ANDROID_APP_VERSION=1.0.0
+# ou, em vez do arquivo local:
+JAGUAR_ANDROID_APK_URL=https://...
+```

@@ -1919,9 +1919,10 @@ html.light {
 .jaguar-login {
   min-height: 100svh;
   display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(430px, 0.9fr);
+  grid-template-columns: minmax(0, 1.48fr) minmax(430px, 0.82fr);
   position: relative;
-  background: #080c10;
+  overflow: hidden;
+  background: #070b0f;
   color: #f2f4f6;
   isolation: isolate;
 }
@@ -1929,115 +1930,176 @@ html.light {
   content: "";
   position: absolute;
   inset: 0;
-  z-index: -1;
+  z-index: -2;
   background:
-    linear-gradient(
-      130deg,
-      transparent 6%,
-      #293038 6.1%,
-      #0d1217 8%,
-      transparent 8.1%,
-      transparent 39%,
-      #5e1423 39.1%,
-      #a31830 39.3%,
-      #141c23 39.5%,
-      transparent 46%
-    ),
-    repeating-linear-gradient(130deg, #ffffff02 0 1px, transparent 1px 5px);
+    radial-gradient(circle at 78% 18%, #18222b55 0, transparent 34%),
+    repeating-linear-gradient(130deg, #ffffff02 0 1px, transparent 1px 6px),
+    #070b0f;
 }
 .jaguar-login__brand-panel {
+  position: relative;
   display: flex;
   align-items: center;
   min-width: 0;
+  min-height: 100svh;
+  overflow: hidden;
+  background:
+    linear-gradient(90deg, #05080cf7 0%, #060a0eea 36%, #060a0ebf 57%, #060a0e52 76%, #060a0e17 100%),
+    linear-gradient(180deg, #05080c1c 0%, #05080c00 48%, #05080c9e 100%),
+    url("/images/jaguar-login-industrial-hero.png") right center / auto 100% no-repeat,
+    #070b0f;
+}
+.jaguar-login__brand-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(132deg, transparent 0 70.1%, #f01434 70.25% 70.52%, #6d1021aa 70.7% 70.95%, transparent 71.2%),
+    radial-gradient(circle at 72% 45%, #e41b351e 0, transparent 38%);
+  z-index: 0;
+}
+.jaguar-login__brand-panel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, transparent 0 60%, #05080c18 78%, #05080cbb 100%),
+    linear-gradient(180deg, #0000 0 65%, #040609b5 100%);
+  z-index: 0;
 }
 .jaguar-login__brand-content {
+  position: relative;
+  z-index: 1;
   width: 100%;
-  padding: 60px clamp(28px, 5vw, 90px);
+  max-width: 920px;
+  padding: 54px clamp(34px, 4.5vw, 82px) 48px;
 }
 .jaguar-login__brand-top {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 28px;
+  gap: 24px;
 }
 .jaguar-login__brand-logo {
-  width: min(100%, 620px);
-  max-height: 290px;
+  width: min(58vw, 570px);
+  max-width: 100%;
+  max-height: 250px;
   object-fit: contain;
   object-position: left center;
+  mix-blend-mode: screen;
+  filter: drop-shadow(0 18px 32px #0009);
 }
 .jaguar-login__brand-tag {
-  color: #b6bec9;
+  display: inline-flex;
+  align-items: center;
+  gap: 16px;
+  color: #d0d6df;
   font-size: 12px;
   letter-spacing: 0.34em;
+  text-shadow: 0 2px 12px #000;
+}
+.jaguar-login__brand-tag::before {
+  content: "";
+  width: 34px;
+  height: 3px;
+  border-radius: 99px;
+  background: #ed1233;
+  box-shadow: 0 0 18px #ed123366;
+}
+.jaguar-login__brand-message {
+  max-width: 625px;
 }
 .jaguar-login__brand-message h1 {
-  margin-top: 16px;
-  font-size: clamp(30px, 3.4vw, 56px);
-  font-weight: 800;
-  line-height: 1.08;
+  margin-top: 18px;
+  font-size: clamp(38px, 4vw, 66px);
+  font-weight: 850;
+  line-height: 0.98;
   text-transform: uppercase;
-  letter-spacing: 0.015em;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+  text-shadow: 0 8px 26px #000d;
 }
 .jaguar-login__brand-message h1 em {
-  color: #ed1233;
+  display: inline-block;
+  margin-top: 7px;
+  color: #f01434;
   font-style: normal;
+  text-shadow: 0 8px 28px #000e, 0 0 22px #ed123322;
 }
 .jaguar-login__brand-message p {
-  max-width: 530px;
-  margin-top: 18px;
-  color: #a6b3c1;
+  max-width: 590px;
+  margin-top: 20px;
+  color: #d2d8e0;
   font-size: 15px;
-  line-height: 1.6;
+  line-height: 1.55;
+  text-shadow: 0 3px 16px #000;
 }
 .jaguar-login__features {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  max-width: 680px;
   margin-top: 32px;
+  border-top: 1px solid #ffffff16;
+  padding-top: 20px;
 }
 .jaguar-login__features > div {
-  padding: 0 14px;
+  min-width: 0;
+  padding: 0 18px;
   display: flex;
-  flex-direction: column;
-  gap: 10px;
-  border-right: 1px solid #35404b;
-  text-align: center;
+  flex-direction: row;
+  gap: 12px;
+  border-right: 1px solid #ffffff29;
+  text-align: left;
   align-items: center;
+}
+.jaguar-login__features > div:first-child {
+  padding-left: 0;
 }
 .jaguar-login__features > div:last-child {
   border-right: 0;
+  padding-right: 0;
 }
 .jaguar-login__features svg {
-  color: #ed1233;
-  width: 28px;
-  height: 28px;
+  color: #f01434;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 auto;
+  filter: drop-shadow(0 0 10px #ed123344);
 }
 .jaguar-login__features b {
   display: block;
   font-size: 12px;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.055em;
+  color: #fff;
 }
 .jaguar-login__features small {
   display: block;
   margin-top: 4px;
-  font-size: 11px;
-  color: #a6b3c1;
+  font-size: 10.5px;
+  line-height: 1.35;
+  color: #aeb8c4;
 }
 .jaguar-login__access {
+  position: relative;
+  z-index: 2;
   display: grid;
   align-content: center;
-  padding: 48px clamp(24px, 4vw, 70px) 48px 12px;
+  padding: 48px clamp(28px, 4vw, 72px) 48px 18px;
+  background: linear-gradient(90deg, #070b0fd9 0%, #070b0ff7 18%, #070b0f 100%);
 }
 .jaguar-login__card {
   width: 100%;
   max-width: 620px;
   display: grid;
   gap: 26px;
-  background: #10161bef;
-  border: 1px solid #4a5662;
+  background: #0d1419f2;
+  border: 1px solid #44515d;
   border-radius: 16px;
   padding: clamp(28px, 4vw, 64px);
+  box-shadow: 0 30px 80px #0004;
 }
 .jaguar-login__eyebrow {
   font-size: 10px;
@@ -2149,6 +2211,33 @@ input {
   }
   .jaguar-nav.flex-col .jaguar-nav__link.is-active::after {
     display: none;
+  }
+}
+@media (max-width: 1120px) and (min-width: 901px) {
+  .jaguar-login {
+    grid-template-columns: minmax(0, 1.1fr) minmax(420px, .9fr);
+  }
+  .jaguar-login__brand-content {
+    padding-left: 30px;
+    padding-right: 30px;
+  }
+  .jaguar-login__brand-logo {
+    width: min(48vw, 450px);
+  }
+  .jaguar-login__brand-message h1 {
+    font-size: clamp(34px, 4vw, 48px);
+  }
+  .jaguar-login__features {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    border-top: 0;
+    padding-top: 8px;
+  }
+  .jaguar-login__features > div,
+  .jaguar-login__features > div:first-child,
+  .jaguar-login__features > div:last-child {
+    padding: 0;
+    border-right: 0;
   }
 }
 @media (max-width: 900px) {
