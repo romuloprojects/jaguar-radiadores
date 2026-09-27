@@ -46,18 +46,11 @@ const movementLabels: Record<string, string> = {
   quote_consumption: "Consumo em atendimento",
 };
 
-function thumbnailImageUrl(value: string, productId: string, retry = 0) {
-  const separator = value.includes("?") ? "&" : "?";
-  return `${value}${separator}thumb=v187&product=${encodeURIComponent(productId)}${retry ? `&retry=${retry}` : ""}`;
-}
-
 function ProductThumbnail({ product }: { product: ProductApi }) {
   const original = normalizeProductImageUrl(product.imageUrl);
-  const [retry, setRetry] = useState(0);
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
-    setRetry(0);
     setFailed(false);
   }, [original]);
 
@@ -72,17 +65,14 @@ function ProductThumbnail({ product }: { product: ProductApi }) {
   return (
     <a className="inventory-photo-link" href={original} target="_blank" rel="noreferrer" title="Abrir foto em tamanho real">
       <img
-        key={`${original}:${retry}`}
-        src={thumbnailImageUrl(original, product.id, retry)}
+        src={original}
         alt={product.description}
         className="inventory-photo"
         loading="eager"
         decoding="async"
         draggable={false}
-        onError={() => {
-          if (retry === 0) setRetry(1);
-          else setFailed(true);
-        }}
+        onLoad={() => setFailed(false)}
+        onError={() => setFailed(true)}
       />
     </a>
   );
