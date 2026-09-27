@@ -13,6 +13,8 @@ const baseQuote={number:'ORC-00016',date:'2026-09-27',paymentTerms:{methodCode:'
 const cash=ctx.exports.buildQuotePrintHtml({document:baseDoc,quote:baseQuote});
 assert.match(cash,/JAGUAR RADIADORES E PECAS LTDA/);
 assert.match(cash,/CNPJ 64\.683\.207\/0001-90/);
+assert.match(cash,/class="legal-line"/);
+assert.doesNotMatch(cash,/<footer class="footer">/);
 assert.match(cash,/Telefone: \(41\) 99648-4298/);
 assert.match(cash,/Endereço: PR 151 \(Trevo\), Distrito Industrial, Jaguariaiva, PR/);
 assert.match(cash,/Contratante \/ Cliente/);
@@ -22,4 +24,4 @@ assert.doesNotMatch(cash,/PIX COPIA E COLA/);
 const pix=ctx.exports.buildQuotePrintHtml({document:baseDoc,quote:{...baseQuote,paymentTerms:{methodCode:'pix'}},qrDataUrl:'data:image/png;base64,AAA'});
 assert.match(pix,/4\. PAGAMENTO, PIX E OBSERVAÇÕES/);
 assert.match(pix,/PIX COPIA E COLA/);
-console.log('PASS: cabeçalho institucional, assinatura e PIX condicional do documento web.');
+console.log('PASS: cabeçalho institucional, assinatura, PIX condicional e rodapé removido do documento web.');
