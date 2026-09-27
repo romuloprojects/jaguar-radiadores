@@ -12,7 +12,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { jaguarApi } from "@/services/jaguarApi";
 import { silentInvalidate } from "@/utils/query-sync";
 import { brl } from "@/utils/format";
-import { asNumber, paymentMethodLabel } from "@/utils/api-format";
+import { allowedPaymentMethods, asNumber, paymentMethodLabel } from "@/utils/api-format";
 import { buildSchedule, paymentTermsFromSchedule, splitAmounts, type ScheduleItem, type ScheduleMode } from "@/utils/payment-schedule";
 
 export const Route = createFileRoute("/orcamentos_/novo")({ component: NewQuotePage });
@@ -28,7 +28,7 @@ function NewQuotePage(){
   const clientsQ=useQuery({queryKey:["clients","quote"],queryFn:()=>jaguarApi.clients.list({limit:200})});
   const catalogQ=useQuery({queryKey:["catalog"],queryFn:()=>jaguarApi.catalog.all()});
   const [step,setStep]=useState(0); const [customerSearch,setCustomerSearch]=useState("");
-  const clients=clientsQ.data?.items??[]; const catalog=catalogQ.data;
+  const clients=clientsQ.data?.items??[]; const catalog=catalogQ.data; const paymentMethods=allowedPaymentMethods(catalog?.paymentMethods);
   const [customerId,setCustomerId]=useState("");
   const effectiveCustomerId=customerId || clients[0]?.id || "";
   const customerQ=useQuery({queryKey:["client",effectiveCustomerId],queryFn:()=>jaguarApi.clients.detail(effectiveCustomerId),enabled:Boolean(effectiveCustomerId)});
@@ -60,7 +60,7 @@ function NewQuotePage(){
         <div className="grid gap-4 xl:grid-cols-[.9fr_1.1fr]">
           <div className="option-panel">
             <h3>Forma de pagamento</h3>
-            <RadioGroup value={payment} onValueChange={v=>{setPayment(v);setReceivedNow(false)}} className="mt-4 space-y-3">{(catalog?.paymentMethods??[]).map(p=><label key={p.code} className="radio-line"><RadioGroupItem value={p.code}/><span>{p.name}</span></label>)}</RadioGroup>
+            <RadioGroup value={payment} onValueChange={v=>{setPayment(v);setReceivedNow(false)}} className="mt-4 space-y-3">{paymentMethods.map(p=><label key={p.code} className="radio-line"><RadioGroupItem value={p.code}/><span>{p.name}</span></label>)}</RadioGroup>
             <div className="mt-5"><span className="form-label">Autorização do cliente</span><div className="segmented-control mt-2 flex-wrap">{[{c:"verbal",l:"Verbal"},{c:"whatsapp",l:"WhatsApp"},{c:"signature",l:"Assinatura"},{c:"other",l:"Outro"}].map(a=><button type="button" key={a.c} className={approval===a.c?"is-active":""} onClick={()=>setApproval(a.c)}>{a.l}</button>)}</div></div>
           </div>
           <div className="option-panel">
@@ -74,7 +74,7 @@ function NewQuotePage(){
               <div className="mt-4 rounded-xl border p-4 text-sm text-muted-foreground">Será criada uma cobrança de <b className="text-foreground">{brl(total)}</b> com vencimento hoje. Você pode marcar como recebida agora ou deixar em aberto.</div>
               <label className="mt-4 flex cursor-pointer items-center gap-3 rounded-xl border p-3 text-sm"><input type="checkbox" checked={receivedNow} onChange={e=>setReceivedNow(e.target.checked)}/><span><b>Pagamento já recebido</b><small className="mt-0.5 block text-muted-foreground">Útil para PIX, dinheiro, débito ou cartão recebidos no atendimento.</small></span></label>
             </>}
-            {receivedNow&&<label className="form-field mt-4"><span>Forma realmente recebida</span><select className="h-10 rounded-md border bg-background px-3" value={receivedMethod} onChange={e=>setReceivedMethod(e.target.value)}>{(catalog?.paymentMethods??[]).filter(m=>m.code!=="credit_agreement").map(m=><option key={m.code} value={m.code}>{m.name}</option>)}</select></label>}
+            {receivedNow&&<label className="form-field mt-4"><span>Forma realmente recebida</span><select className="h-10 rounded-md border bg-background px-3" value={receivedMethod} onChange={e=>setReceivedMethod(e.target.value)}>{paymentMethods.filter(m=>m.code!=="credit_agreement").map(m=><option key={m.code} value={m.code}>{m.name}</option>)}</select></label>}
           </div>
         </div>
       </div>}

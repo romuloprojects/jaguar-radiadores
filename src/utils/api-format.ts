@@ -38,6 +38,12 @@ export function paymentStatusLabel(status?: string | null) {
   }
 }
 
+
+export const ALLOWED_PAYMENT_CODES = new Set(["pix","cash","debit_card","credit_card","credit_agreement"]);
+export function allowedPaymentMethods<T extends { code: string }>(methods?: T[] | null): T[] {
+  return (methods ?? []).filter((method) => ALLOWED_PAYMENT_CODES.has(method.code));
+}
+
 export function paymentMethodLabel(code?: string | null, methods?: Array<{ code: string; name: string }>) {
   if (!code) return "—";
   return methods?.find((m) => m.code === code)?.name ?? ({
@@ -47,7 +53,7 @@ export function paymentMethodLabel(code?: string | null, methods?: Array<{ code:
     credit_card: "Cartão de crédito",
     bank_transfer: "Transferência",
     boleto: "Boleto",
-    credit_agreement: "A prazo / combinado",
+    credit_agreement: "A prazo",
     other: "Outro",
   } as Record<string,string>)[code] ?? code;
 }
