@@ -76,13 +76,10 @@ export function productImageMime(type: string, name: string, bytes: Uint8Array) 
   if(!signature||mime!==signature)throw new ProductImageError('UNSUPPORTED_IMAGE',415);
   return mime;
 }
-export async function saveProductImage(file: File) {
-  if(file.size<=0)throw new ProductImageError('EMPTY_IMAGE',400);
-  if(file.size>8*1024*1024)throw new ProductImageError('IMAGE_TOO_LARGE',413);
-  const bytes=new Uint8Array(await file.arrayBuffer());
+export async function saveProductImageBytes(bytes: Uint8Array, type: string, name: string) {
   if(bytes.byteLength<=0)throw new ProductImageError('EMPTY_IMAGE',400);
   if(bytes.byteLength>8*1024*1024)throw new ProductImageError('IMAGE_TOO_LARGE',413);
-  const mime=productImageMime(file.type,file.name,bytes);
+  const mime=productImageMime(type,name,bytes);
   const ext=({'image/jpeg':'.jpg','image/png':'.png','image/webp':'.webp'} as Record<string,string>)[mime];
   const fileName=`${Date.now()}-${randomUUID()}${ext}`;
   const target=path.join(MOBILE_PRODUCT_DIR,fileName);const temporary=target+'.tmp';
@@ -96,6 +93,19 @@ export async function saveProductImage(file: File) {
     throw new ProductImageError(error?.code==='ENOSPC'?'UPLOAD_STORAGE_FULL':'UPLOAD_FILESYSTEM_ERROR',error?.code==='ENOSPC'?507:503);
   }
   return {fileName,bytes:bytes.byteLength,mime,target};
+}
+
+export async function saveProductImage(file: File) {
+  if(file.size<=0)throw new ProductImageError('EMPTY_IMAGE',400);
+  if(file.size>8*1024*1024)throw new ProductImageError('IMAGE_TOO_LARGE',413);
+  return saveProductImageBytes(new Uint8Array(await file.arrayBuffer()),file.type,file.name);
+}
+
+export function publicRequestOrigin(request: Request) {
+  const url=new URL(request.url);
+  const proto=(request.headers.get('x-forwarded-proto')||url.protocol.replace(':','')).split(',')[0].trim();
+  const host=(request.headers.get('x-forwarded-host')||request.headers.get('host')||url.host).split(',')[0].trim();
+  return `${proto}://${host}`;
 }
 
 export function safeProductImagePath(name: string) {

@@ -1,4 +1,4 @@
-// Real HTTP multipart and filesystem; the upstream database workflow is a local test server.
+// Real HTTP binary upload + legacy multipart fallback + filesystem; upstream DB workflow is a local test server.
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -48,37 +48,41 @@ try{
  const origin=await listen(app);
  const jpeg=await fs.readFile(path.join(root,'public/images/jaguar-logo-source.jpg'));
  const png=await fs.readFile(path.join(root,'public/favicon.png'));
- async function upload(bytes=jpeg,mime='image/jpeg',name='S24.jpg',token='test-session'){
+ async function uploadBinary(bytes=jpeg,mime='image/jpeg',name='S24.jpg',token='test-session',extraHeaders={}){
+  const response=await fetch(origin+'/api/mobile/media/product-image?productId=product-test',{method:'POST',headers:{...(token?{Authorization:`Bearer ${token}`}:{ }),'Content-Type':mime,'X-Jaguar-Filename':encodeURIComponent(name),...extraHeaders},body:bytes});
+  return {status:response.status,data:await response.json(),headers:response.headers};
+ }
+ async function uploadMultipart(bytes=jpeg,mime='image/jpeg',name='legacy.jpg',token='test-session'){
   const body=new FormData();body.append('productId','product-test');body.append('image',new Blob([bytes],{type:mime}),name);
   const response=await fetch(origin+'/api/mobile/media/product-image',{method:'POST',headers:token?{Authorization:`Bearer ${token}`}:{},body});
   return {status:response.status,data:await response.json(),headers:response.headers};
  }
  let first;
- for(const mime of ['image/jpeg','image/jpg','','application/octet-stream']){
-  const result=await upload(jpeg,mime,'S24.JPG');assert.equal(result.status,200,JSON.stringify(result.data));assert.equal(result.data.mimeType,'image/jpeg');assert.equal(result.headers.get('cache-control'),'private, no-store');
+ for(const [mime,name] of [['image/jpeg','S24.JPG'],['image/jpg','S24.JPG'],['application/octet-stream','S24.JPG']]){
+  const result=await uploadBinary(jpeg,mime,name);assert.equal(result.status,200,JSON.stringify(result.data));assert.equal(result.data.mimeType,'image/jpeg');assert.equal(result.data.transport,'binary');assert.equal(result.headers.get('cache-control'),'private, no-store');
   const served=await fetch(result.data.imageUrl);assert.equal(served.status,200);assert.equal(served.headers.get('content-type'),'image/jpeg');assert.deepEqual(Buffer.from(await served.arrayBuffer()),jpeg);first??=result.data;
  }
- assert.equal((await upload(png,'application/octet-stream','photo.png')).status,200);
- // Valid 1x1 WebP fixture, independent from MIME metadata.
+ assert.equal((await uploadBinary(png,'image/png','photo.png')).status,200);
  const webp=Buffer.from('UklGRiIAAABXRUJQVlA4IBYAAAAwAQCdASoBAAEADsD+JaQAA3AAAAAA','base64');
- assert.equal((await upload(webp,'image/webp','photo.webp')).status,200);
- assert.equal((await upload(Buffer.from('not an image'),'image/jpeg')).status,415);
- assert.equal((await upload(jpeg,'image/png','photo.png')).status,415);
- assert.equal((await upload(new Uint8Array(8*1024*1024+1))).status,413);
- assert.equal((await upload(new Uint8Array())).status,400);
- assert.equal((await upload(jpeg,'image/jpeg','photo.jpg','')).status,401);
- assert.equal((await upload(jpeg,'image/jpeg','photo.jpg','invalid')).status,401);
+ assert.equal((await uploadBinary(webp,'image/webp','photo.webp')).status,200);
+ const legacy=await uploadMultipart(jpeg,'image/jpeg','legacy.jpg');assert.equal(legacy.status,200);assert.equal(legacy.data.transport,'multipart');
+ assert.equal((await uploadBinary(Buffer.from('not an image'),'image/jpeg')).status,415);
+ assert.equal((await uploadBinary(jpeg,'image/png','photo.png')).status,415);
+ assert.equal((await uploadBinary(new Uint8Array(8*1024*1024+1))).status,413);
+ assert.equal((await uploadBinary(new Uint8Array())).status,400);
+ assert.equal((await uploadBinary(jpeg,'image/jpeg','photo.jpg','')).status,401);
+ assert.equal((await uploadBinary(jpeg,'image/jpeg','photo.jpg','invalid')).status,401);
+ const noProduct=await fetch(origin+'/api/mobile/media/product-image',{method:'POST',headers:{Authorization:'Bearer test-session','Content-Type':'image/jpeg'},body:jpeg});assert.equal(noProduct.status,400);
  assert.ok(patches.every(p=>Object.keys(p).sort().join(',')==='id,imageUrl'));assert.ok(patches.every(p=>p.id==='product-test'));
- linkFails=true;const failedLink=await upload();assert.equal(failedLink.status,500);assert.equal(failedLink.data.code,'DB_UNAVAILABLE');linkFails=false;
+ linkFails=true;const failedLink=await uploadBinary();assert.equal(failedLink.status,500);assert.equal(failedLink.data.code,'DB_UNAVAILABLE');linkFails=false;
  const backup=path.join(store,'products-backup');await fs.rename(storage.MOBILE_PRODUCT_DIR,backup);await fs.writeFile(storage.MOBILE_PRODUCT_DIR,'blocked');
- const failedFs=await upload();assert.equal(failedFs.status,503);assert.equal(failedFs.data.code,'UPLOAD_FILESYSTEM_ERROR');await fs.unlink(storage.MOBILE_PRODUCT_DIR);await fs.rename(backup,storage.MOBILE_PRODUCT_DIR);
+ const failedFs=await uploadBinary();assert.equal(failedFs.status,503);assert.equal(failedFs.data.code,'UPLOAD_FILESYSTEM_ERROR');await fs.unlink(storage.MOBILE_PRODUCT_DIR);await fs.rename(backup,storage.MOBILE_PRODUCT_DIR);
  assert.equal(storage.safeProductImagePath('../outside.jpg'),null);
  const persisted=path.join(storage.MOBILE_PRODUCT_DIR,first.fileName);
- // A new Node process reads the same persistent directory after the HTTP app stops.
  await stop(app);app=null;
  const size=execFileSync(process.execPath,['-e','process.stdout.write(String(require("fs").readFileSync(process.argv[1]).length))',persisted],{encoding:'utf8'});
  assert.equal(Number(size),jpeg.length);
- console.log('PASS: HTTP multipart real, JPEG/PNG/WebP, MIME vazio/octet-stream/jpg, assinatura, 401/413/415/503, vínculo URL sem binário, entrega da imagem e leitura em novo processo. Sem S24+/HTTPS/volume de produção.');
+ console.log('PASS: HTTP binário direto + fallback multipart, JPEG/PNG/WebP, assinatura, 400/401/413/415/503, vínculo URL sem binário, origem pública e persistência em novo processo. Sem S24+/HTTPS/volume de produção.');
 }finally{
  await stop(app);await stop(upstream);
  const resolved=path.resolve(temporary),parent=path.resolve(os.tmpdir());

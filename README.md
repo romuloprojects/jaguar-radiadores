@@ -1,4 +1,4 @@
-# Jaguar Radiadores — Frontend API Real V1.2
+# Jaguar Radiadores — Frontend API Real V1.8.2
 
 Frontend homologado da Jaguar Radiadores conectado ao backend real n8n + PostgreSQL.
 
@@ -156,3 +156,7 @@ JAGUAR_ANDROID_APP_VERSION=1.0.0
 # ou, em vez do arquivo local:
 JAGUAR_ANDROID_APK_URL=https://...
 ```
+
+
+## V1.8.2 — integração de foto do estoque
+O endpoint mobile de foto aceita upload binário direto do Expo (`File` como corpo HTTP) e mantém fallback multipart para APKs anteriores. A imagem continua sendo persistida em `JAGUAR_UPLOAD_DIR/products`, validada por assinatura e vinculada ao produto por `product-update` apenas com `id + imageUrl`.
