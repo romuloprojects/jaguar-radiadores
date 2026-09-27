@@ -47,14 +47,30 @@ const movementLabels: Record<string, string> = {
   quote_consumption: "Consumo em atendimento",
 };
 
+function ProductPhotoLightbox({ open, onOpenChange, src, alt }: { open: boolean; onOpenChange: (open: boolean) => void; src: string; alt: string }) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="inventory-photo-lightbox">
+        <DialogTitle className="sr-only">Foto ampliada de {alt}</DialogTitle>
+        <DialogDescription className="sr-only">Visualização ampliada da foto do produto.</DialogDescription>
+        <div className="inventory-photo-lightbox__stage">
+          <img src={src} alt={alt} className="inventory-photo-lightbox__image" draggable={false} />
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function ProductThumbnail({ product }: { product: ProductApi }) {
   const original = normalizeProductImageUrl(product.imageUrl);
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   useEffect(() => {
     setThumbnailUrl(null);
     setFailed(false);
+    setLightboxOpen(false);
     if (!original) return;
 
     const controller = new AbortController();
@@ -86,24 +102,27 @@ function ProductThumbnail({ product }: { product: ProductApi }) {
   }
 
   if (failed) {
-    return <a className="inventory-photo-link inventory-photo-link--fallback" href={original} target="_blank" rel="noreferrer" title="Abrir foto em tamanho real"><Camera className="h-4 w-4"/><span>Abrir foto</span></a>;
+    return <button type="button" className="inventory-photo-link inventory-photo-link--fallback" title="Foto indisponível" disabled><Camera className="h-4 w-4"/><span>Foto indisponível</span></button>;
   }
 
   if (!thumbnailUrl) {
-    return <a className="inventory-photo-link inventory-photo-link--loading" href={original} target="_blank" rel="noreferrer" title="Abrir foto em tamanho real"><Camera className="h-4 w-4"/><span>Carregando</span></a>;
+    return <div className="inventory-photo-link inventory-photo-link--loading" title="Carregando foto"><Camera className="h-4 w-4"/><span>Carregando</span></div>;
   }
 
   return (
-    <a className="inventory-photo-link" href={original} target="_blank" rel="noreferrer" title="Abrir foto em tamanho real">
-      <img
-        src={thumbnailUrl}
-        alt={product.description}
-        className="inventory-photo"
-        decoding="async"
-        draggable={false}
-        onError={() => setFailed(true)}
-      />
-    </a>
+    <>
+      <button type="button" className="inventory-photo-link inventory-photo-link--button" onClick={() => setLightboxOpen(true)} title="Ampliar foto" aria-label={`Ampliar foto de ${product.description}`}>
+        <img
+          src={thumbnailUrl}
+          alt={product.description}
+          className="inventory-photo"
+          decoding="async"
+          draggable={false}
+          onError={() => setFailed(true)}
+        />
+      </button>
+      <ProductPhotoLightbox open={lightboxOpen} onOpenChange={setLightboxOpen} src={thumbnailUrl} alt={product.description} />
+    </>
   );
 }
 
