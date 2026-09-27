@@ -14,9 +14,9 @@ const store=path.join(temporary,'persistent','uploads');
 const patches=[];let linkFails=false;let upstream,app;
 const listen=server=>new Promise(resolve=>server.listen(0,'127.0.0.1',()=>resolve(`http://127.0.0.1:${server.address().port}`)));
 const stop=server=>new Promise(resolve=>server?server.close(resolve):resolve());
-async function compile(relative,name,handler){
+async function compile(relative,name,handlers){
  let source=await fs.readFile(path.join(root,relative),'utf8');
- if(handler){source=source.replace(/import \{ createFileRoute \} from "@tanstack\/react-router";\s*/,'').replace('"@/lib/mobile-server"','"./mobile-server.mjs"');source=source.slice(0,source.indexOf('export const Route'))+`export {${handler}};`;}
+ if(handlers){source=source.replace(/import \{ createFileRoute \} from "@tanstack\/react-router";\s*/,'').replace('"@/lib/mobile-server"','"./mobile-server.mjs"');source=source.slice(0,source.indexOf('export const Route'))+`export {${handlers}};`;}
  await fs.writeFile(path.join(temporary,name),ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}}).outputText);
  return import(pathToFileURL(path.join(temporary,name)).href);
 }
@@ -33,13 +33,17 @@ try{
  });
  process.env.JAGUAR_N8N_WEBHOOK_BASE_URL=await listen(upstream);process.env.JAGUAR_UPLOAD_DIR=store;
  const storage=await compile('src/lib/mobile-server.ts','mobile-server.mjs');
- const {POST}=await compile('src/routes/api/mobile/media/product-image.ts','upload.mjs','POST');
+ const {POST,GET,HEAD}=await compile('src/routes/api/mobile/media/product-image.ts','upload.mjs','POST,GET,HEAD');
  app=http.createServer(async(req,res)=>{
   try{
    const url=`http://${req.headers.host}${req.url}`;let response;
    if(req.method==='POST'){
     const chunks=[];for await(const chunk of req)chunks.push(chunk);
     response=await POST({request:new Request(url,{method:'POST',headers:req.headers,body:Buffer.concat(chunks)})});
+   }else if(new URL(url).pathname==='/api/mobile/media/product-image' && req.method==='HEAD'){
+    response=await HEAD({request:new Request(url,{method:'HEAD',headers:req.headers})});
+   }else if(new URL(url).pathname==='/api/mobile/media/product-image' && req.method==='GET'){
+    response=await GET({request:new Request(url,{method:'GET',headers:req.headers})});
    }else response=await storage.tryServeProductImageRequest(new Request(url,{method:req.method,headers:req.headers}));
    if(!response)response=Response.json({ok:false,code:'NOT_FOUND'},{status:404});
    res.writeHead(response.status,Object.fromEntries(response.headers));res.end(Buffer.from(await response.arrayBuffer()));
@@ -82,7 +86,7 @@ try{
  await stop(app);app=null;
  const size=execFileSync(process.execPath,['-e','process.stdout.write(String(require("fs").readFileSync(process.argv[1]).length))',persisted],{encoding:'utf8'});
  assert.equal(Number(size),jpeg.length);
- console.log('PASS: upload binário + fallback multipart e GET público servido pelo handler de servidor, JPEG/PNG/WebP, 400/401/413/415/503, vínculo URL, origem pública e persistência. Sem S24+/HTTPS/volume de produção.');
+ console.log('PASS: upload binário + fallback multipart + GET/HEAD na rota exata product-image, JPEG/PNG/WebP, 400/401/413/415/503, vínculo URL, origem pública e persistência. Sem S24+/HTTPS/volume de produção.');
 }finally{
  await stop(app);await stop(upstream);
  const resolved=path.resolve(temporary),parent=path.resolve(os.tmpdir());

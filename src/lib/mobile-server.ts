@@ -124,27 +124,12 @@ export function mimeFromName(name: string) {
 
 const PRODUCT_MEDIA_PREFIX = "/api/mobile/media/products/";
 
-export async function tryServeProductImageRequest(request: Request): Promise<Response | null> {
-  const url = new URL(request.url);
-  if (!url.pathname.startsWith(PRODUCT_MEDIA_PREFIX)) return null;
-
-  if (request.method !== "GET" && request.method !== "HEAD") {
+export async function serveProductImageFile(name: string, method: string = "GET"): Promise<Response> {
+  if (method !== "GET" && method !== "HEAD") {
     return Response.json(
       { ok: false, code: "METHOD_NOT_ALLOWED", message: "Método não permitido" },
       { status: 405, headers: { Allow: "GET, HEAD", "Cache-Control": "no-store" } },
     );
-  }
-
-  const encodedName = url.pathname.slice(PRODUCT_MEDIA_PREFIX.length);
-  if (!encodedName || encodedName.includes("/")) {
-    return Response.json({ ok: false, code: "NOT_FOUND", message: "Imagem não encontrada" }, { status: 404 });
-  }
-
-  let name: string;
-  try {
-    name = decodeURIComponent(encodedName);
-  } catch {
-    return Response.json({ ok: false, code: "NOT_FOUND", message: "Imagem não encontrada" }, { status: 404 });
   }
 
   const filePath = safeProductImagePath(name);
@@ -154,7 +139,7 @@ export async function tryServeProductImageRequest(request: Request): Promise<Res
 
   try {
     const bytes = await readFile(filePath);
-    return new Response(request.method === "HEAD" ? null : bytes, {
+    return new Response(method === "HEAD" ? null : bytes, {
       status: 200,
       headers: {
         "Content-Type": mimeFromName(name),
@@ -169,6 +154,25 @@ export async function tryServeProductImageRequest(request: Request): Promise<Res
     }
     return Response.json({ ok: false, code: "NOT_FOUND", message: "Imagem não encontrada" }, { status: 404 });
   }
+}
+
+export async function tryServeProductImageRequest(request: Request): Promise<Response | null> {
+  const url = new URL(request.url);
+  if (!url.pathname.startsWith(PRODUCT_MEDIA_PREFIX)) return null;
+
+  const encodedName = url.pathname.slice(PRODUCT_MEDIA_PREFIX.length);
+  if (!encodedName || encodedName.includes("/")) {
+    return Response.json({ ok: false, code: "NOT_FOUND", message: "Imagem não encontrada" }, { status: 404 });
+  }
+
+  let name: string;
+  try {
+    name = decodeURIComponent(encodedName);
+  } catch {
+    return Response.json({ ok: false, code: "NOT_FOUND", message: "Imagem não encontrada" }, { status: 404 });
+  }
+
+  return serveProductImageFile(name, request.method);
 }
 
 export async function readApk() {

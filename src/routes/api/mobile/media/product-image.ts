@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { bearerFrom, callJaguar, publicRequestOrigin, saveProductImage, saveProductImageBytes, statusFromPayload, ProductImageError } from "@/lib/mobile-server";
+import { bearerFrom, callJaguar, publicRequestOrigin, saveProductImage, saveProductImageBytes, serveProductImageFile, statusFromPayload, ProductImageError } from "@/lib/mobile-server";
 
 function json(body: unknown, status=200) {
   return Response.json(body,{status,headers:{"Cache-Control":"private, no-store"}});
@@ -42,7 +42,7 @@ async function POST({ request }: { request: Request }) {
       stage='filesystem';saved=await saveProductImageBytes(bytes,mime,name);
     }
 
-    const imageUrl=`${publicRequestOrigin(request)}/api/mobile/media/products/${encodeURIComponent(saved.fileName)}`;
+    const imageUrl=`${publicRequestOrigin(request)}/api/mobile/media/product-image?file=${encodeURIComponent(saved.fileName)}`;
     stage='product-link';
     const {upstream,payload}=await callJaguar('product-update',{
       method:'PATCH',signal:AbortSignal.timeout(20000),
@@ -64,4 +64,22 @@ async function POST({ request }: { request: Request }) {
   }
 }
 
-export const Route = createFileRoute("/api/mobile/media/product-image")({ server: { handlers: { POST } } });
+async function serveFromExactRoute(request: Request) {
+  const fileName = new URL(request.url).searchParams.get("file")?.trim() || "";
+  if (!fileName) {
+    return json({ ok: false, code: "NOT_FOUND", message: "Imagem não encontrada" }, 404);
+  }
+  return serveProductImageFile(fileName, request.method);
+}
+
+async function GET({ request }: { request: Request }) {
+  return serveFromExactRoute(request);
+}
+
+async function HEAD({ request }: { request: Request }) {
+  return serveFromExactRoute(request);
+}
+
+export const Route = createFileRoute("/api/mobile/media/product-image")({
+  server: { handlers: { POST, GET, HEAD } },
+});

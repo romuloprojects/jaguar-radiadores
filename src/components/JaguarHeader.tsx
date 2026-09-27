@@ -29,6 +29,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
+function sessionFirstName(user: { username?: string; displayName?: string } | null | undefined) {
+  const raw = String(user?.displayName || user?.username || "Usuário").trim();
+  if (String(user?.username || "").toLowerCase() === "admin" && /^administrador(?:\s+jaguar)?$/i.test(raw)) return "Eduardo";
+  return raw.split(/\s+/)[0] || "Usuário";
+}
+
 const nav = [
   { to: "/", label: "Visão Geral", icon: LayoutDashboard },
   { to: "/clientes", label: "Clientes", icon: Users },
@@ -100,10 +106,10 @@ export function JaguarHeader() {
             <DropdownMenuTrigger asChild>
               <button className="jaguar-user">
                 <span className="jaguar-user__avatar">
-                  {(session?.user.displayName || "U").slice(0, 1).toUpperCase()}
+                  {sessionFirstName(session?.user).slice(0, 1).toUpperCase()}
                 </span>
                 <span className="hidden text-left md:block">
-                  <b>{session?.user.displayName ?? "Usuário"}</b>
+                  <b>Olá, {sessionFirstName(session?.user)}!</b>
                   <small>{session?.user.role === "ADMIN" ? "Administrador" : "Operador"}</small>
                 </span>
                 <ChevronDown className="hidden h-4 w-4 md:block" />
