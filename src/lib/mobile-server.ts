@@ -134,7 +134,7 @@ export async function serveProductImageFile(name: string, method: string = "GET"
 
   const filePath = safeProductImagePath(name);
   if (!filePath) {
-    return Response.json({ ok: false, code: "NOT_FOUND", message: "Imagem não encontrada" }, { status: 404 });
+    return Response.json({ ok: false, code: "NOT_FOUND", message: "Imagem não encontrada" }, { status: 404, headers: { "Cache-Control": "no-store" } });
   }
 
   try {
@@ -152,7 +152,7 @@ export async function serveProductImageFile(name: string, method: string = "GET"
     if (error?.code !== "ENOENT") {
       console.error("Jaguar product image read", { code: error?.code, filePath });
     }
-    return Response.json({ ok: false, code: "NOT_FOUND", message: "Imagem não encontrada" }, { status: 404 });
+    return Response.json({ ok: false, code: "NOT_FOUND", message: "Imagem não encontrada" }, { status: 404, headers: { "Cache-Control": "no-store" } });
   }
 }
 
@@ -162,14 +162,14 @@ export async function tryServeProductImageRequest(request: Request): Promise<Res
 
   const encodedName = url.pathname.slice(PRODUCT_MEDIA_PREFIX.length);
   if (!encodedName || encodedName.includes("/")) {
-    return Response.json({ ok: false, code: "NOT_FOUND", message: "Imagem não encontrada" }, { status: 404 });
+    return Response.json({ ok: false, code: "NOT_FOUND", message: "Imagem não encontrada" }, { status: 404, headers: { "Cache-Control": "no-store" } });
   }
 
   let name: string;
   try {
     name = decodeURIComponent(encodedName);
   } catch {
-    return Response.json({ ok: false, code: "NOT_FOUND", message: "Imagem não encontrada" }, { status: 404 });
+    return Response.json({ ok: false, code: "NOT_FOUND", message: "Imagem não encontrada" }, { status: 404, headers: { "Cache-Control": "no-store" } });
   }
 
   return serveProductImageFile(name, request.method);

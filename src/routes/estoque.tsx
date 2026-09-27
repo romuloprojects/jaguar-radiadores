@@ -46,6 +46,48 @@ const movementLabels: Record<string, string> = {
   quote_consumption: "Consumo em atendimento",
 };
 
+function thumbnailImageUrl(value: string, productId: string, retry = 0) {
+  const separator = value.includes("?") ? "&" : "?";
+  return `${value}${separator}thumb=v187&product=${encodeURIComponent(productId)}${retry ? `&retry=${retry}` : ""}`;
+}
+
+function ProductThumbnail({ product }: { product: ProductApi }) {
+  const original = normalizeProductImageUrl(product.imageUrl);
+  const [retry, setRetry] = useState(0);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    setRetry(0);
+    setFailed(false);
+  }, [original]);
+
+  if (!original) {
+    return <div className="inventory-photo-slot"><Camera className="h-4 w-4"/><span>Foto</span></div>;
+  }
+
+  if (failed) {
+    return <a className="inventory-photo-link inventory-photo-link--fallback" href={original} target="_blank" rel="noreferrer" title="Abrir foto em tamanho real"><Camera className="h-4 w-4"/><span>Abrir foto</span></a>;
+  }
+
+  return (
+    <a className="inventory-photo-link" href={original} target="_blank" rel="noreferrer" title="Abrir foto em tamanho real">
+      <img
+        key={`${original}:${retry}`}
+        src={thumbnailImageUrl(original, product.id, retry)}
+        alt={product.description}
+        className="inventory-photo"
+        loading="eager"
+        decoding="async"
+        draggable={false}
+        onError={() => {
+          if (retry === 0) setRetry(1);
+          else setFailed(true);
+        }}
+      />
+    </a>
+  );
+}
+
 function InventoryPage() {
   const qc = useQueryClient();
   const [query, setQuery] = useState("");
@@ -107,7 +149,7 @@ function InventoryPage() {
               <thead><tr><th>Item</th><th>Código</th><th>Produto</th><th>Categoria</th><th>Atual</th><th>Reservado</th><th>Disponível</th><th>Custo médio</th><th>Preço venda</th><th>Status</th><th></th></tr></thead>
               <tbody>
                 {products.map((item)=><tr key={item.id}>
-                  <td>{normalizeProductImageUrl(item.imageUrl)?<a className="inventory-photo-link" href={normalizeProductImageUrl(item.imageUrl)!} target="_blank" rel="noreferrer" title="Abrir foto em tamanho real"><img src={normalizeProductImageUrl(item.imageUrl)!} alt={item.description} className="inventory-photo" loading="lazy"/></a>:<div className="inventory-photo-slot"><Camera className="h-4 w-4"/><span>Foto</span></div>}</td>
+                  <td><ProductThumbnail product={item}/></td>
                   <td className="font-semibold text-muted-foreground">{item.code || "—"}</td>
                   <td><b className="block text-foreground">{item.description}</b><small className="text-muted-foreground">{item.brand || item.supplier || "—"}</small></td>
                   <td>{item.category || "—"}</td><td>{asNumber(item.current)}</td><td>{asNumber(item.reserved)}</td>
