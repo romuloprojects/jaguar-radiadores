@@ -71,6 +71,41 @@ async function recoverCreatedQuote(token: string, bodyText?: string) {
   return null;
 }
 
+
+export async function recoverCreatedProduct(token: string, bodyText?: string) {
+  if (!bodyText) return null;
+  let body: any;
+  try { body = JSON.parse(bodyText); } catch { return null; }
+
+  const expectedCode = String(body?.code || "").trim();
+  const expectedDescription = String(body?.description || body?.name || "").trim();
+  const expectedBrand = String(body?.brand || "").trim();
+  if (!expectedCode) return null;
+
+  try {
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    const authHeaders = {
+      Accept: "application/json",
+      Authorization: `Bearer ${token}`,
+      "X-Jaguar-Client": "android-product-recovery",
+    };
+    const query = new URLSearchParams({ search: expectedCode, limit: "20" });
+    const { upstream, payload } = await callJaguar(`products?${query.toString()}`, { method: "GET", headers: authHeaders });
+    if (!upstream.ok || payload?.ok === false || !Array.isArray(payload?.items)) return null;
+
+    const norm = (value: unknown) => String(value || "").trim().toLocaleLowerCase("pt-BR");
+    const candidates = payload.items.filter((item: any) => norm(item?.code) === norm(expectedCode));
+    if (candidates.length !== 1) return null;
+    const product = candidates[0];
+    if (expectedDescription && norm(product?.description) !== norm(expectedDescription)) return null;
+    if (expectedBrand && norm(product?.brand) !== norm(expectedBrand)) return null;
+    return { ok: true, id: String(product.id), recovered: true };
+  } catch (recoveryError) {
+    console.error("Jaguar product-create recovery failed", recoveryError);
+    return null;
+  }
+}
+
 async function handler({ request, params }: { request: Request; params: { _splat?: string } }) {
   const splat = String(params._splat || "").replace(/^\/+/, "");
   if (!splat) return Response.json({ ok: false, code: "NOT_FOUND", message: "Rota inválida" }, { status: 404 });
@@ -92,6 +127,15 @@ async function handler({ request, params }: { request: Request; params: { _splat
 
   try {
     const { upstream, payload } = await callJaguar(`${splat}${query}`, { method, headers, body });
+    if (splat === "product-create" && method === "POST" && token && (upstream.status >= 500 || payload?.code === "BACKEND_UNAVAILABLE")) {
+      const recovered = await recoverCreatedProduct(token, body);
+      if (recovered) {
+        return Response.json(recovered, {
+          status: 200,
+          headers: { "Cache-Control": "private, no-store", "X-Jaguar-Recovered": "product-create" },
+        });
+      }
+    }
     return Response.json(payload, {
       status: statusFromPayload(payload, upstream.status),
       headers: { "Cache-Control": "private, no-store" },
@@ -111,13 +155,27 @@ async function handler({ request, params }: { request: Request; params: { _splat
         });
       }
     }
+    if (splat === "product-create" && method === "POST" && token) {
+      const recovered = await recoverCreatedProduct(token, body);
+      if (recovered) {
+        return Response.json(recovered, {
+          status: 200,
+          headers: {
+            "Cache-Control": "private, no-store",
+            "X-Jaguar-Recovered": "product-create",
+          },
+        });
+      }
+    }
 
     return Response.json({
       ok: false,
       code: "BACKEND_UNAVAILABLE",
       message: splat === "quote-create"
         ? "O backend demorou para responder. Verifique Atendimentos antes de tentar novamente para evitar uma OS duplicada."
-        : "Não foi possível comunicar com o backend Jaguar.",
+        : splat === "product-create"
+          ? "O backend demorou para responder. Atualize o Estoque antes de tentar novamente."
+          : "Não foi possível comunicar com o backend Jaguar.",
     }, { status: 502 });
   }
 }
