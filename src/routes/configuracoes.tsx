@@ -21,7 +21,7 @@ export const Route = createFileRoute("/configuracoes")({ component: SettingsPage
 
 type CompanyForm={businessName:string;tradeName:string;cnpj:string;stateRegistration:string;phone:string;whatsapp:string;email:string;street:string;number:string;complement:string;neighborhood:string;city:string;state:string;postalCode:string;pixKeyType:string;pixKey:string;pixReceiverName:string;pixReceiverCity:string;reserveStockOnQuote:boolean;consumeStockOnComplete:boolean;defaultAuthorizationMethod:string};
 const PROTECTED_COMPANY={
-  businessName:"Jaguar Radiadores",
+  businessName:"JAGUAR RADIADORES E PECAS LTDA",
   tradeName:"Jaguar Radiadores",
   cnpj:"64.683.207/0001-90",
   whatsapp:"(41) 99648-4298",

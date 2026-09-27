@@ -25,8 +25,11 @@ export function buildQuotePrintHtml(args: { document: any; quote: any; qrDataUrl
   const logoRaw = company.logoUrl || "/images/jaguar-logo-source.jpg";
   const logo = /^(https?:|data:)/.test(logoRaw) ? logoRaw : (typeof window !== "undefined" ? new URL(logoRaw, window.location.origin).href : logoRaw);
   const methodCode = d.paymentTerms?.methodCode || q.paymentTerms?.methodCode;
+  const isPix = String(methodCode || "") === "pix" || receivables.some((r: any) => String(r.methodCode || "") === "pix");
   const total = Number(d.total ?? q.total ?? 0);
   const notes = d.notes || q.notes || "";
+  const legalName = "JAGUAR RADIADORES E PECAS LTDA";
+  const tradeName = company.tradeName || "Jaguar Radiadores";
 
   const rows = [...services.map((i: any) => ({ ...i, _kind: "Serviço" })), ...parts.map((i: any) => ({ ...i, _kind: "Peça" }))];
   const itemRows = rows.length ? rows.map((i: any) => `
@@ -59,12 +62,12 @@ export function buildQuotePrintHtml(args: { document: any; quote: any; qrDataUrl
       <div class="wide"><span>Vencimentos</span><b>${esc(dueText)}</b></div>
     </div>`;
 
-  const pixBlock = pix.copyPaste ? `
+  const paymentBlock = isPix ? (pix.copyPaste ? `
     <div class="pix-layout">
       <div class="qr-wrap">${args.qrDataUrl ? `<img src="${esc(args.qrDataUrl)}" alt="QR Code PIX"/>` : `<div class="qr-placeholder">QR PIX</div>`}</div>
       <div class="pix-info">
         <h3>PIX</h3>
-        <p><span>Favorecido</span><b>${line(pix.receiverName || company.tradeName || company.businessName)}</b></p>
+        <p><span>Favorecido</span><b>${line(pix.receiverName || tradeName || legalName)}</b></p>
         <p><span>Chave PIX</span><b>${line(pix.key)}</b></p>
         <p><span>Valor do orçamento</span><b>${brl(total)}</b></p>
         ${paymentCompact}
@@ -76,12 +79,17 @@ export function buildQuotePrintHtml(args: { document: any; quote: any; qrDataUrl
       <div class="qr-wrap"><div class="qr-placeholder">PIX</div></div>
       <div class="pix-info">
         <h3>PIX ainda não configurado</h3>
-        <p>A chave PIX pode ser cadastrada posteriormente em <b>Configurações</b>.</p>
+        <p>A chave PIX pode ser cadastrada em <b>Configurações</b>.</p>
         ${paymentCompact}
-        <small>O orçamento continua válido e imprimível. Assim que a chave for cadastrada, o QR Code e o Pix Copia e Cola passam a aparecer automaticamente.</small>
+        <small>O documento continua válido. O QR Code e o Pix Copia e Cola aparecerão assim que a chave estiver disponível.</small>
       </div>
       <div class="note-box"><b>Observações</b><p>${line(notes, "Sem observações adicionais.")}</p></div>
+    </div>`) : `
+    <div class="payment-card">
+      ${paymentCompact}
+      <div class="note-box"><b>Observações</b><p>${line(notes, "Sem observações adicionais.")}</p></div>
     </div>`;
+  const section4Title = isPix ? "4. PAGAMENTO, PIX E OBSERVAÇÕES" : "4. PAGAMENTO E OBSERVAÇÕES";
 
   return `<!doctype html>
 <html lang="pt-BR">
@@ -100,7 +108,7 @@ export function buildQuotePrintHtml(args: { document: any; quote: any; qrDataUrl
   .logo{width:68mm;height:31mm;object-fit:contain;object-position:left center;display:block}.company-lines{margin-top:2mm;color:#d0d2d7;font-size:8.7px;line-height:1.55}.hero-right{text-align:right}.hero-right h1{margin:0 0 1.5mm;font-size:21px;letter-spacing:.02em;line-height:1.08}.doc-meta{display:grid;grid-template-columns:1fr 38mm;gap:2mm;margin-top:4mm}.meta-box{background:#202228;border-radius:2.4mm;padding:2.2mm 3mm;text-align:left}.meta-box small{display:block;color:#9fa3ad;text-transform:uppercase;font-size:7.5px;letter-spacing:.05em}.meta-box b{display:block;font-size:11px;margin-top:.4mm}
   .section-title{background:var(--ink);color:#fff;border-radius:2mm;padding:2mm 3.5mm;margin:4mm 0 2mm;font-weight:900;font-size:10.5px;letter-spacing:.02em}.card{border:1px solid var(--line);border-radius:2.8mm;background:#fff;padding:3.2mm}.info-grid{display:grid;grid-template-columns:1.3fr .8fr .8fr;gap:3mm 6mm}.vehicle-grid{display:grid;grid-template-columns:.55fr .8fr 1fr 1.4fr;gap:3mm 6mm}.field.wide{grid-column:1/-1}.field span{display:block;color:#777d88;font-size:7.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em}.field b,.field p{display:block;margin:.7mm 0 0;font-size:9.8px}.field b{font-weight:800}.field p{font-weight:500}
   table{width:100%;border-collapse:collapse} thead th{background:#eef0f3;color:#686e78;font-size:7.6px;text-transform:uppercase;text-align:left;padding:2mm 2.5mm;border:1px solid var(--line)} tbody td{padding:2.1mm 2.5mm;border:1px solid var(--line);vertical-align:top}.kind{font-weight:900;width:19mm}.kind.service{color:#bf1a21}.kind.part{color:#b46c00}.center{text-align:center}.money{text-align:right;white-space:nowrap}.bold{font-weight:900}.empty{text-align:center;color:var(--muted);padding:5mm}
-    .pix-layout{border:1px solid var(--line);border-radius:2.8mm;padding:3mm;display:grid;grid-template-columns:27mm 1fr 62mm;gap:3.5mm;align-items:start}.qr-wrap{display:flex;align-items:center;justify-content:center}.qr-wrap img,.qr-placeholder{width:25mm;height:25mm}.qr-placeholder{border:1px dashed #a9adb5;border-radius:1.5mm;display:flex;align-items:center;justify-content:center;color:#7d828c;font-weight:900}.pix-info h3{font-size:10.5px;margin:0 0 1.5mm}.pix-info p{margin:.8mm 0;display:flex;gap:2mm}.pix-info p span{color:#737985;min-width:22mm}.pix-info small{display:block;margin-top:1.5mm;color:#757b85}.pay-compact{display:grid;grid-template-columns:1fr 1fr;gap:1mm 4mm;margin:1.6mm 0 0}.pay-compact div{display:flex;flex-direction:column;gap:.3mm}.pay-compact .wide{grid-column:1/-1}.pay-compact span{color:#737985;font-size:7.1px;font-weight:800;text-transform:uppercase}.pay-compact b{font-size:8.2px;font-weight:700;color:#1f2329}.pix-copy,.note-box{background:#f3f4f6;border-radius:2.2mm;padding:2.6mm;min-height:25mm}.pix-copy span,.note-box b,.note-inline b{display:block;color:#686e78;font-size:7.4px;font-weight:900;text-transform:uppercase;margin-bottom:1.2mm}.pix-copy code{display:block;word-break:break-all;font-size:5.5px;line-height:1.22;color:#333}.note-box p,.note-inline p{margin:0;color:#464a51;font-size:8px}.note-inline{margin-top:2mm;padding-top:1.6mm;border-top:1px solid #d7dbe1}.pix-empty{grid-template-columns:27mm 1fr 62mm}
+    .pix-layout{border:1px solid var(--line);border-radius:2.8mm;padding:3mm;display:grid;grid-template-columns:27mm 1fr 62mm;gap:3.5mm;align-items:start}.qr-wrap{display:flex;align-items:center;justify-content:center}.qr-wrap img,.qr-placeholder{width:25mm;height:25mm}.qr-placeholder{border:1px dashed #a9adb5;border-radius:1.5mm;display:flex;align-items:center;justify-content:center;color:#7d828c;font-weight:900}.pix-info h3{font-size:10.5px;margin:0 0 1.5mm}.pix-info p{margin:.8mm 0;display:flex;gap:2mm}.pix-info p span{color:#737985;min-width:22mm}.pix-info small{display:block;margin-top:1.5mm;color:#757b85}.pay-compact{display:grid;grid-template-columns:1fr 1fr;gap:1mm 4mm;margin:1.6mm 0 0}.pay-compact div{display:flex;flex-direction:column;gap:.3mm}.pay-compact .wide{grid-column:1/-1}.pay-compact span{color:#737985;font-size:7.1px;font-weight:800;text-transform:uppercase}.pay-compact b{font-size:8.2px;font-weight:700;color:#1f2329}.pix-copy,.note-box{background:#f3f4f6;border-radius:2.2mm;padding:2.6mm;min-height:25mm}.pix-copy span,.note-box b,.note-inline b{display:block;color:#686e78;font-size:7.4px;font-weight:900;text-transform:uppercase;margin-bottom:1.2mm}.pix-copy code{display:block;word-break:break-all;font-size:5.5px;line-height:1.22;color:#333}.note-box p,.note-inline p{margin:0;color:#464a51;font-size:8px}.note-inline{margin-top:2mm;padding-top:1.6mm;border-top:1px solid #d7dbe1}.pix-empty{grid-template-columns:27mm 1fr 62mm}.payment-card{border:1px solid var(--line);border-radius:2.8mm;padding:3mm;display:grid;grid-template-columns:1.25fr .75fr;gap:4mm;align-items:start}.payment-card .note-box{min-height:auto}
   .auth-card{border:1px solid var(--line);border-radius:2.8mm;padding:3.5mm}.auth-text{font-size:9px}.auth-note{color:#777d88;font-size:8px;margin-top:1.2mm}.signatures{display:grid;grid-template-columns:1fr 1fr;gap:25mm;margin:12mm 5mm 1mm}.signature{border-top:1px solid #8e9299;text-align:center;padding-top:1.5mm;color:#747a84;font-size:8px}.footer{margin-top:4mm;color:#777d88;font-size:7.3px;display:flex;justify-content:space-between;gap:8mm;padding:0 2mm}.footer span:last-child{text-align:right}
   @media print{body{background:#fff}.toolbar{display:none}.sheet{width:auto;min-height:auto;margin:0;padding:0;border-radius:0;box-shadow:none}.hero,.section-title,.pay-card{-webkit-print-color-adjust:exact;print-color-adjust:exact}.section-title{break-after:avoid}.card,.financial-row,.pix-layout,.auth-card{break-inside:avoid}}
   @media screen and (max-width:820px){body{min-width:760px}.sheet{margin:8px auto}}
@@ -112,7 +120,7 @@ export function buildQuotePrintHtml(args: { document: any; quote: any; qrDataUrl
   <header class="hero">
     <div>
       <img class="logo" src="${esc(logo)}" alt="Jaguar Radiadores"/>
-      <div class="company-lines">${uniqueContactLine(company.phone, company.whatsapp)}<br/>${line(company.address)}</div>
+      <div class="company-lines"><b>${line(legalName)}</b> · CNPJ ${line(company.cnpj)}<br/>Telefone: ${uniqueContactLine(company.phone, company.whatsapp)}<br/>Endereço: ${line(company.address)}</div>
     </div>
     <div class="hero-right">
       <h1>ORÇAMENTO / ORDEM DE SERVIÇO</h1>
@@ -144,17 +152,17 @@ export function buildQuotePrintHtml(args: { document: any; quote: any; qrDataUrl
   <div class="section-title">3. SERVIÇOS E PEÇAS AUTORIZADOS</div>
   <table><thead><tr><th>Tipo</th><th>Descrição</th><th class="center">Qtd.</th><th class="money">Vlr. unit.</th><th class="money">Total</th></tr></thead><tbody>${itemRows}</tbody></table>
 
-  <div class="section-title">4. PAGAMENTO, PIX E OBSERVAÇÕES</div>
-  ${pixBlock}
+  <div class="section-title">${section4Title}</div>
+  ${paymentBlock}
 
   <div class="section-title">5. AUTORIZAÇÃO</div>
   <section class="auth-card">
     <div class="auth-text">Declaro estar ciente dos valores, itens e serviços descritos neste documento e autorizo a execução do atendimento.</div>
     <div class="auth-note">Autorização registrada no sistema: <b>${line(authorizationLabel(d.authorizationMethod || q.authorizationMethod))}</b>.</div>
-    <div class="signatures"><div class="signature">Contratante / Cliente</div><div class="signature">Jaguar Radiadores</div></div>
+    <div class="signatures"><div class="signature">Contratante / Cliente</div><div class="signature">${line(tradeName)}</div></div>
   </section>
 
-  <footer class="footer"><span>${line(company.tradeName || company.businessName || "Jaguar Radiadores")} · ${line(company.cnpj)}</span><span>${uniqueContactLine(company.phone, company.whatsapp)} · ${line(company.address)}</span></footer>
+  <footer class="footer"><span>${line(legalName)} · CNPJ ${line(company.cnpj)}</span><span>${uniqueContactLine(company.phone, company.whatsapp)} · ${line(company.address)}</span></footer>
 </main>
 </body></html>`;
 }

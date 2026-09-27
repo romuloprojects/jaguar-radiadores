@@ -1,0 +1,25 @@
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const vm=require('node:vm');
+const ts=require('typescript');
+let src=fs.readFileSync('src/utils/quote-print.ts','utf8')
+  .replace(/^import .*\n/gm,'');
+const pre=`const brl=n=>Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});const authorizationLabel=c=>({verbal:'Verbal',whatsapp:'WhatsApp',signature:'Assinatura',other:'Outro'})[c]||c||'Não informado';const datePt=v=>{if(!v)return '—';const s=String(v).slice(0,10),[y,m,d]=s.split('-');return y&&m&&d?d+'/'+m+'/'+y:String(v)};const paymentMethodLabel=c=>({pix:'PIX',cash:'Dinheiro',debit_card:'Cartão de débito',credit_card:'Cartão de crédito',credit_agreement:'A prazo'})[c]||'Outro';\n`;
+const js=ts.transpileModule(pre+src,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
+const ctx={exports:{},console,URL,window:{location:{origin:'https://jaguar-radiadores.facilities-ai.com.br'}}};
+vm.runInNewContext(js,ctx);
+const baseDoc={number:'ORC-00016',issuedAt:'2026-09-27',company:{businessName:'OUTRO NOME',tradeName:'Jaguar Radiadores',cnpj:'64.683.207/0001-90',whatsapp:'(41) 99648-4298',address:'PR 151 (Trevo), Distrito Industrial, Jaguariaiva, PR'},customer:{name:'Cliente'},vehicle:{},items:[],total:100,pix:{key:'64683207000190',receiverName:'Jaguar Radiadores',copyPaste:'000201PIX'}};
+const baseQuote={number:'ORC-00016',date:'2026-09-27',paymentTerms:{methodCode:'cash'},receivables:[],items:[],total:100,authorizationMethod:'verbal'};
+const cash=ctx.exports.buildQuotePrintHtml({document:baseDoc,quote:baseQuote});
+assert.match(cash,/JAGUAR RADIADORES E PECAS LTDA/);
+assert.match(cash,/CNPJ 64\.683\.207\/0001-90/);
+assert.match(cash,/Telefone: \(41\) 99648-4298/);
+assert.match(cash,/Endereço: PR 151 \(Trevo\), Distrito Industrial, Jaguariaiva, PR/);
+assert.match(cash,/Contratante \/ Cliente/);
+assert.match(cash,/>Jaguar Radiadores<\/div>/);
+assert.match(cash,/4\. PAGAMENTO E OBSERVAÇÕES/);
+assert.doesNotMatch(cash,/PIX COPIA E COLA/);
+const pix=ctx.exports.buildQuotePrintHtml({document:baseDoc,quote:{...baseQuote,paymentTerms:{methodCode:'pix'}},qrDataUrl:'data:image/png;base64,AAA'});
+assert.match(pix,/4\. PAGAMENTO, PIX E OBSERVAÇÕES/);
+assert.match(pix,/PIX COPIA E COLA/);
+console.log('PASS: cabeçalho institucional, assinatura e PIX condicional do documento web.');

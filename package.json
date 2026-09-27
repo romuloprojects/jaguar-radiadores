@@ -17,7 +17,8 @@
     "validate:v1-3": "node scripts/validate-v1-3.mjs",
     "validate:v1-4": "node scripts/validate-v1-4.mjs",
     "validate:v1-6": "node scripts/validate-v1-6.mjs",
-    "test:photo": "node scripts/test-product-photo.mjs"
+    "test:photo": "node scripts/test-product-photo.mjs",
+    "test:quote": "node scripts/test-quote-print.cjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -92,6 +93,6 @@
     "typescript-eslint": "^8.56.1",
     "vite": "^8.0.16"
   },
-  "version": "1.8.12",
+  "version": "1.8.13",
   "packageManager": "bun@1.3.0"
 }
