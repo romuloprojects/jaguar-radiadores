@@ -1853,6 +1853,17 @@ html.light {
   text-align: center;
   text-decoration: none;
 }
+.inventory-photo-link--loading {
+  grid-auto-flow: row;
+  align-content: center;
+  gap: 4px;
+  color: var(--muted-foreground);
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+  text-decoration: none;
+  opacity: 0.78;
+}
 .dark .inventory-photo-link {
   background: #e8e8e5;
 }

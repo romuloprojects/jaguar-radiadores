@@ -32,6 +32,7 @@ import type { ProductApi, PurchaseListItemApi } from "@/types/api";
 import { asNumber, datePt, dateTimePt } from "@/utils/api-format";
 import { brl } from "@/utils/format";
 import { normalizeProductImageUrl } from "@/utils/product-image";
+import { fetchProductImageObjectUrl } from "@/utils/product-image-client";
 
 export const Route = createFileRoute("/estoque")({ component: InventoryPage });
 
@@ -48,11 +49,37 @@ const movementLabels: Record<string, string> = {
 
 function ProductThumbnail({ product }: { product: ProductApi }) {
   const original = normalizeProductImageUrl(product.imageUrl);
+  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
+    setThumbnailUrl(null);
     setFailed(false);
-  }, [original]);
+    if (!original) return;
+
+    const controller = new AbortController();
+    let objectUrl: string | null = null;
+
+    void fetchProductImageObjectUrl(original, controller.signal)
+      .then((url) => {
+        if (controller.signal.aborted) {
+          URL.revokeObjectURL(url);
+          return;
+        }
+        objectUrl = url;
+        setThumbnailUrl(url);
+      })
+      .catch((error) => {
+        if (controller.signal.aborted || error?.name === "AbortError") return;
+        console.warn("Jaguar product thumbnail", { productId: product.id, imageUrl: original, error });
+        setFailed(true);
+      });
+
+    return () => {
+      controller.abort();
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [original, product.id]);
 
   if (!original) {
     return <div className="inventory-photo-slot"><Camera className="h-4 w-4"/><span>Foto</span></div>;
@@ -62,16 +89,18 @@ function ProductThumbnail({ product }: { product: ProductApi }) {
     return <a className="inventory-photo-link inventory-photo-link--fallback" href={original} target="_blank" rel="noreferrer" title="Abrir foto em tamanho real"><Camera className="h-4 w-4"/><span>Abrir foto</span></a>;
   }
 
+  if (!thumbnailUrl) {
+    return <a className="inventory-photo-link inventory-photo-link--loading" href={original} target="_blank" rel="noreferrer" title="Abrir foto em tamanho real"><Camera className="h-4 w-4"/><span>Carregando</span></a>;
+  }
+
   return (
     <a className="inventory-photo-link" href={original} target="_blank" rel="noreferrer" title="Abrir foto em tamanho real">
       <img
-        src={original}
+        src={thumbnailUrl}
         alt={product.description}
         className="inventory-photo"
-        loading="eager"
         decoding="async"
         draggable={false}
-        onLoad={() => setFailed(false)}
         onError={() => setFailed(true)}
       />
     </a>
