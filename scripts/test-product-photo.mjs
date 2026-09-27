@@ -34,14 +34,14 @@ try{
  process.env.JAGUAR_N8N_WEBHOOK_BASE_URL=await listen(upstream);process.env.JAGUAR_UPLOAD_DIR=store;
  const storage=await compile('src/lib/mobile-server.ts','mobile-server.mjs');
  const {POST}=await compile('src/routes/api/mobile/media/product-image.ts','upload.mjs','POST');
- const {GET}=await compile('src/routes/api/mobile/media/products/$.ts','download.mjs','GET');
  app=http.createServer(async(req,res)=>{
   try{
    const url=`http://${req.headers.host}${req.url}`;let response;
    if(req.method==='POST'){
     const chunks=[];for await(const chunk of req)chunks.push(chunk);
     response=await POST({request:new Request(url,{method:'POST',headers:req.headers,body:Buffer.concat(chunks)})});
-   }else response=await GET({params:{_splat:decodeURIComponent(req.url.split('/').pop())}});
+   }else response=await storage.tryServeProductImageRequest(new Request(url,{method:req.method,headers:req.headers}));
+   if(!response)response=Response.json({ok:false,code:'NOT_FOUND'},{status:404});
    res.writeHead(response.status,Object.fromEntries(response.headers));res.end(Buffer.from(await response.arrayBuffer()));
   }catch(error){res.writeHead(500);res.end(String(error));}
  });
@@ -82,7 +82,7 @@ try{
  await stop(app);app=null;
  const size=execFileSync(process.execPath,['-e','process.stdout.write(String(require("fs").readFileSync(process.argv[1]).length))',persisted],{encoding:'utf8'});
  assert.equal(Number(size),jpeg.length);
- console.log('PASS: HTTP binário direto + fallback multipart, JPEG/PNG/WebP, assinatura, 400/401/413/415/503, vínculo URL sem binário, origem pública e persistência em novo processo. Sem S24+/HTTPS/volume de produção.');
+ console.log('PASS: upload binário + fallback multipart e GET público servido pelo handler de servidor, JPEG/PNG/WebP, 400/401/413/415/503, vínculo URL, origem pública e persistência. Sem S24+/HTTPS/volume de produção.');
 }finally{
  await stop(app);await stop(upstream);
  const resolved=path.resolve(temporary),parent=path.resolve(os.tmpdir());

@@ -122,6 +122,55 @@ export function mimeFromName(name: string) {
   return "application/octet-stream";
 }
 
+const PRODUCT_MEDIA_PREFIX = "/api/mobile/media/products/";
+
+export async function tryServeProductImageRequest(request: Request): Promise<Response | null> {
+  const url = new URL(request.url);
+  if (!url.pathname.startsWith(PRODUCT_MEDIA_PREFIX)) return null;
+
+  if (request.method !== "GET" && request.method !== "HEAD") {
+    return Response.json(
+      { ok: false, code: "METHOD_NOT_ALLOWED", message: "Método não permitido" },
+      { status: 405, headers: { Allow: "GET, HEAD", "Cache-Control": "no-store" } },
+    );
+  }
+
+  const encodedName = url.pathname.slice(PRODUCT_MEDIA_PREFIX.length);
+  if (!encodedName || encodedName.includes("/")) {
+    return Response.json({ ok: false, code: "NOT_FOUND", message: "Imagem não encontrada" }, { status: 404 });
+  }
+
+  let name: string;
+  try {
+    name = decodeURIComponent(encodedName);
+  } catch {
+    return Response.json({ ok: false, code: "NOT_FOUND", message: "Imagem não encontrada" }, { status: 404 });
+  }
+
+  const filePath = safeProductImagePath(name);
+  if (!filePath) {
+    return Response.json({ ok: false, code: "NOT_FOUND", message: "Imagem não encontrada" }, { status: 404 });
+  }
+
+  try {
+    const bytes = await readFile(filePath);
+    return new Response(request.method === "HEAD" ? null : bytes, {
+      status: 200,
+      headers: {
+        "Content-Type": mimeFromName(name),
+        "Content-Length": String(bytes.byteLength),
+        "Cache-Control": "public, max-age=31536000, immutable",
+        "X-Content-Type-Options": "nosniff",
+      },
+    });
+  } catch (error: any) {
+    if (error?.code !== "ENOENT") {
+      console.error("Jaguar product image read", { code: error?.code, filePath });
+    }
+    return Response.json({ ok: false, code: "NOT_FOUND", message: "Imagem não encontrada" }, { status: 404 });
+  }
+}
+
 export async function readApk() {
   const info = await stat(MOBILE_APK_PATH);
   if (!info.isFile()) throw new Error("APK_NOT_FOUND");
